@@ -1,0 +1,99 @@
+spring:
+  application:
+    name: yuemo-mall
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:192.168.1.45}:3306/yuemo_mall?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=15000&socketTimeout=30000&sslMode=DISABLED&cacheServerConfiguration=true&useServerPrepStmts=true&tcpKeepAlive=true&tcpNoDelay=true
+    username: ${DB_USER:root}
+    password: ${DB_PASS:jiangjing}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      connection-timeout: 15000
+      max-lifetime: 1800000
+      initialization-fail-timeout: -1
+      pool-name: YuemoHikariPool
+
+  data:
+    redis:
+      host: ${REDIS_HOST:192.168.1.45}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:jiangjing}
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 10
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000
+
+jwt:
+  secret: ${JWT_SECRET:yuemo-mall-production-secret-key-change-me!!}
+  access-token-expiration: 1800
+  refresh-token-expiration: 604800
+
+rocketmq:
+  name-server: ${ROCKETMQ_NS:192.168.1.45:9876}
+  producer:
+    group: yuemo-producer-group
+    send-message-timeout: 3000
+  consumer:
+    group: yuemo-consumer-group
+
+sentinel:
+  transport:
+    dashboard: ${SENTINEL_DASHBOARD:192.168.1.45:8080}
+  eager: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    com.yuemo: INFO
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+
+springdoc:
+  swagger-ui:
+    path: /doc.html
+
+# ===== 网关配置 =====
+yuemo:
+  gateway:
+    white-list:
+      - /api/user/login
+      - /api/user/register
+      - /doc.html
+      - /webjars/**
+      - /v3/api-docs/**
+      - /actuator/**
+      - /api/payment/callback/**
+    semi-white-list:
+      - GET:/api/product/**
+      - GET:/api/category/**
+    rate-limits:
+      login:
+        path: /api/user/login
+        permits-per-minute: 10
+      register:
+        path: /api/user/register
+        permits-per-minute: 10
+      order:
+        path: /api/order/
+        permits-per-minute: 30
+      payment:
+        path: /api/payment/
+        permits-per-minute: 10
+      admin:
+        path: /api/admin/
+        permits-per-minute: 200
+      default:
+        path: /api/
+        permits-per-minute: 100

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(mvn compile *)",
+      "Bash(mvn dependency:resolve -pl yuemo-product)"
+    ]
+  }
+}

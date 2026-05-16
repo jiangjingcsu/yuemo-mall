@@ -1,0 +1,65 @@
+# Backend - Maven
+yuemo-backend/target/
+yuemo-backend/pom.xml.tag
+yuemo-backend/pom.xml.releaseBackup
+yuemo-backend/pom.xml.versionsBackup
+yuemo-backend/pom.xml.next
+yuemo-backend/release.properties
+yuemo-backend/dependency-reduced-pom.xml
+yuemo-backend/buildNumber.properties
+yuemo-backend/.mvn/timing.properties
+yuemo-backend/.mvn/wrapper/maven-wrapper.jar
+
+# Backend - Eclipse/IDEA
+yuemo-backend/.classpath
+yuemo-backend/.project
+yuemo-backend/.settings/
+yuemo-backend/.metadata
+yuemo-backend/bin/
+yuemo-backend/tmp/
+yuemo-backend/*.tmp
+yuemo-backend/*.bak
+yuemo-backend/*.swp
+yuemo-backend/*~.nib
+yuemo-backend/local.properties
+yuemo-backend/.loadpath
+yuemo-backend/.recommenders
+yuemo-backend/out/
+yuemo-backend/.idea/
+yuemo-backend/*.iml
+yuemo-backend/*.iws
+yuemo-backend/*.ipr
+
+# Frontend - Node
+yuemo-frontend/node_modules/
+yuemo-frontend/.pnp/
+yuemo-frontend/.pnp.js
+yuemo-frontend/package-lock.json
+
+# Frontend - Build
+yuemo-frontend/dist/
+yuemo-frontend/.next/
+yuemo-frontend/out/
+yuemo-frontend/build/
+yuemo-frontend/.nuxt/
+
+# Frontend - Testing
+yuemo-frontend/coverage/
+yuemo-frontend/.nyc_output/
+
+# IDE - VS Code
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini

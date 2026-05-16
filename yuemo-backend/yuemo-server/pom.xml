@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.yuemo</groupId>
+        <artifactId>yuemo-mall</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>yuemo-server</artifactId>
+    <packaging>jar</packaging>
+    <name>yuemo-server</name>
+    <description>月魔商城 — 单体应用统一入口</description>
+
+    <dependencies>
+        <!-- 网关层（Filter 链自动装配） -->
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-gateway</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- 全部业务模块 -->
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-user</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-product</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-order</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-payment</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-cart</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-promotion</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-admin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- API 文档 -->
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- 消息队列 -->
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.yuemo.server.YuemoServerApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
