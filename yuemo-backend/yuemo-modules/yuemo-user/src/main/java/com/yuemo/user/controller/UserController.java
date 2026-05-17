@@ -44,4 +44,9 @@ public class UserController {
         userService.updateUser(userId, user);
         return Result.success();
     }
+
+    @GetMapping("/balance")
+    public Result<java.math.BigDecimal> balance(@RequestAttribute("userId") Long userId) {
+        return Result.success(userService.getBalance(userId));
+    }
 }

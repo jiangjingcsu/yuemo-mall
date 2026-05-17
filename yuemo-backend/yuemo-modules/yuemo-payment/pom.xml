@@ -23,6 +23,16 @@
         </dependency>
         <dependency>
             <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-order</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-user</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
             <artifactId>common-security</artifactId>
             <version>${project.version}</version>
         </dependency>

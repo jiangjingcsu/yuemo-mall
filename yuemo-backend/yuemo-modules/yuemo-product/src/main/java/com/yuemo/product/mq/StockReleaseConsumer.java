@@ -1,13 +1,13 @@
 package com.yuemo.product.mq;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.yuemo.product.entity.Product;
-import com.yuemo.product.mapper.ProductMapper;
+import com.yuemo.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * 释放库存消费者 — 订单取消/超时后恢复库存
@@ -19,15 +19,21 @@ import org.springframework.stereotype.Component;
     consumerGroup = "yuemo-product-consumer"
 )
 @RequiredArgsConstructor
-public class StockReleaseConsumer implements RocketMQListener<Long> {
+public class StockReleaseConsumer implements RocketMQListener<Map<Long, Integer>> {
 
-    private final ProductMapper productMapper;
+    private final ProductService productService;
 
     @Override
-    public void onMessage(Long orderId) {
-        log.info("收到释放库存消息: orderId={}", orderId);
-        // TODO: 通过订单明细表查询该订单的商品和数量，恢复对应商品的库存
-        // 当前简化处理：在实际项目中需查询订单明细，反向恢复库存
-        log.info("释放库存处理完成: orderId={}", orderId);
+    public void onMessage(Map<Long, Integer> stockMap) {
+        log.info("收到释放库存消息: {}", stockMap);
+        stockMap.forEach((productId, quantity) -> {
+            try {
+                productService.restoreStock(productId, quantity);
+                log.info("释放库存成功: productId={}, quantity={}", productId, quantity);
+            } catch (Exception e) {
+                log.error("释放库存失败: productId={}, quantity={}", productId, quantity, e);
+                throw e;
+            }
+        });
     }
 }

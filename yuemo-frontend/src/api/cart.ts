@@ -3,6 +3,8 @@ import request from '../utils/request';
 export interface CartItem {
   id: number;
   productId: number;
+  skuId: number;
+  specText: string;
   productName: string;
   productImage: string;
   price: number;
@@ -11,9 +13,9 @@ export interface CartItem {
 }
 
 export const cartApi = {
-  add: (productId: number, quantity: number) =>
-    request.post('/cart/add', null, { params: { productId, quantity } }),
-  getList: () => request.get<any, CartItem[]>('/cart/list'),
+  add: (skuId: number, quantity: number) =>
+    request.post('/cart/add', null, { params: { skuId, quantity } }),
+  getList: () => request.get<CartItem[]>('/cart/list'),
   updateQuantity: (itemId: number, quantity: number) =>
     request.put(`/cart/${itemId}`, null, { params: { quantity } }),
   remove: (itemId: number) => request.delete(`/cart/${itemId}`),

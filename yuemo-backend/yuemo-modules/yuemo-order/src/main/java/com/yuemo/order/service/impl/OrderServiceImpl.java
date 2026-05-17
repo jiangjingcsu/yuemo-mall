@@ -9,9 +9,13 @@ import com.yuemo.common.core.utils.IdGenerator;
 import com.yuemo.order.dto.CreateOrderDTO;
 import com.yuemo.order.entity.Order;
 import com.yuemo.order.entity.OrderItem;
+import com.yuemo.order.entity.OrderLog;
 import com.yuemo.order.mapper.OrderItemMapper;
+import com.yuemo.order.mapper.OrderLogMapper;
 import com.yuemo.order.mapper.OrderMapper;
 import com.yuemo.order.service.OrderService;
+import com.yuemo.product.entity.Product;
+import com.yuemo.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
@@ -35,7 +39,9 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final OrderLogMapper orderLogMapper;
     private final RocketMQTemplate rocketMQTemplate;
+    private final ProductService productService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -48,11 +54,15 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for (CreateOrderDTO.OrderItemDTO itemDTO : dto.getItems()) {
+            Product product = productService.getProductById(itemDTO.getProductId());
+
             OrderItem item = new OrderItem();
             item.setProductId(itemDTO.getProductId());
             item.setQuantity(itemDTO.getQuantity());
-            item.setPrice(BigDecimal.ZERO); // 实际场景应查询商品价格
-            item.setTotalAmount(item.getPrice().multiply(BigDecimal.valueOf(itemDTO.getQuantity())));
+            item.setPrice(product.getPrice());
+            item.setTotalAmount(product.getPrice().multiply(BigDecimal.valueOf(itemDTO.getQuantity())));
+            item.setProductName(product.getName());
+            item.setProductImage(product.getMainImage());
             items.add(item);
             totalAmount = totalAmount.add(item.getTotalAmount());
         }
@@ -70,9 +80,6 @@ public class OrderServiceImpl implements OrderService {
 
         for (OrderItem item : items) {
             item.setOrderId(order.getId());
-            // 实际场景应查询商品名称和图片
-            item.setProductName("商品" + item.getProductId());
-            item.setProductImage("");
             orderItemMapper.insert(item);
         }
 
@@ -117,11 +124,17 @@ public class OrderServiceImpl implements OrderService {
         if (order.getStatus() != 0) {
             throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
         }
+        int fromStatus = order.getStatus();
         order.setStatus(4);
         orderMapper.updateById(order);
+        saveOrderLog(orderId, fromStatus, 4, "user:" + userId, "取消订单");
 
-        // 发送释放库存消息
-        rocketMQTemplate.convertAndSend("order-stock-release", orderId);
+        // 查询订单明细，构建库存释放信息
+        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, orderId));
+        Map<Long, Integer> stockMap = items.stream()
+                .collect(Collectors.toMap(OrderItem::getProductId, OrderItem::getQuantity));
+        rocketMQTemplate.convertAndSend("order-stock-release", stockMap);
     }
 
     @Override
@@ -132,9 +145,73 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
+        if (order.getStatus() != 0) {
+            log.warn("订单状态异常，无法更新为已支付: orderNo={}, currentStatus={}", orderNo, order.getStatus());
+            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
+        }
         order.setStatus(1);
         order.setPayTime(LocalDateTime.now());
         orderMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void shipOrder(Long orderId, String logisticsCompany, String logisticsNo) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
+        }
+        if (order.getStatus() != 1) {
+            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
+        }
+        int fromStatus = order.getStatus();
+        order.setStatus(2);
+        order.setLogisticsCompany(logisticsCompany);
+        order.setLogisticsNo(logisticsNo);
+        order.setDeliveryTime(LocalDateTime.now());
+        orderMapper.updateById(order);
+        saveOrderLog(orderId, fromStatus, 2, "system", "发货");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmReceive(Long userId, Long orderId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
+        }
+        if (order.getStatus() != 2) {
+            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
+        }
+        int fromStatus = order.getStatus();
+        order.setStatus(3);
+        order.setReceiveTime(LocalDateTime.now());
+        orderMapper.updateById(order);
+        saveOrderLog(orderId, fromStatus, 3, "user:" + userId, "确认收货");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteOrder(Long userId, Long orderId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
+        }
+        if (order.getStatus() != 3 && order.getStatus() != 4) {
+            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
+        }
+        order.setDeleted(true);
+        orderMapper.updateById(order);
+    }
+
+    private void saveOrderLog(Long orderId, Integer fromStatus, Integer toStatus, String operator, String remark) {
+        OrderLog logEntry = new OrderLog();
+        logEntry.setOrderId(orderId);
+        logEntry.setFromStatus(fromStatus);
+        logEntry.setToStatus(toStatus);
+        logEntry.setOperator(operator);
+        logEntry.setRemark(remark);
+        orderLogMapper.insert(logEntry);
     }
 
     private String generateOrderNo(Long userId) {

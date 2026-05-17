@@ -15,4 +15,10 @@ public interface OrderService {
     void cancelOrder(Long userId, Long orderId);
 
     void paySuccess(String orderNo);
+
+    void shipOrder(Long orderId, String logisticsCompany, String logisticsNo);
+
+    void confirmReceive(Long userId, Long orderId);
+
+    void deleteOrder(Long userId, Long orderId);
 }

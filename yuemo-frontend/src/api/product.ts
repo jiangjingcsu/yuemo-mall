@@ -85,21 +85,21 @@ export interface ProductSearchParams {
 
 export const productApi = {
   getList: (params: ProductSearchParams) =>
-    request.get<any, { records: ProductVO[]; total: number; current: number; pages: number }>('/product/list', { params }),
+    request.get<{ records: ProductVO[]; total: number; current: number; pages: number }>('/product/list', { params }),
 
-  getDetail: (id: number) => request.get<any, ProductDetailVO>(`/product/${id}`),
+  getDetail: (id: number) => request.get<ProductDetailVO>(`/product/${id}`),
 
-  getCategories: () => request.get<any, any[]>('/product/category/list'),
+  getCategories: () => request.get<{ id: number; name: string }[]>('/product/category/list'),
 
-  getBrands: () => request.get<any, any[]>('/product/brand/list'),
+  getBrands: () => request.get<{ id: number; name: string }[]>('/product/brand/list'),
 
-  getHotKeywords: () => request.get<any, any[]>('/product/search/hot'),
+  getHotKeywords: () => request.get<{ id: number; keyword: string }[]>('/product/search/hot'),
 
-  getSuggestions: (keyword: string) => request.get<any, any[]>('/product/search/suggest', { params: { keyword } }),
+  getSuggestions: (keyword: string) => request.get<{ id: number; keyword: string }[]>('/product/search/suggest', { params: { keyword } }),
 
   getReviews: (productId: number, page: number, size: number) =>
-    request.get<any, { records: any[]; total: number }>(`/product/${productId}/reviews`, { params: { page, size } }),
+    request.get<{ records: { id: number; rating: number; content: string; images: string; reply: string; createTime: string }[]; total: number }>(`/product/${productId}/reviews`, { params: { page, size } }),
 
   getReviewSummary: (productId: number) =>
-    request.get<any, ReviewSummaryVO>(`/product/${productId}/review-summary`),
+    request.get<ReviewSummaryVO>(`/product/${productId}/review-summary`),
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, InputNumber, Empty, message, Popconfirm, Space } from 'antd';
+import { Image, Table, Button, InputNumber, Empty, message, Popconfirm, Space, Tag } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 import { cartApi, CartItem } from '../../api/cart';
 import { useDispatch } from 'react-redux';
@@ -43,22 +43,35 @@ export default function CartPage() {
 
   const columns = [
     {
-      title: '', key: 'select',
+      title: '', key: 'select', width: 40,
       render: (_: unknown, r: CartItem) => (
         <input type="checkbox" checked={r.selected}
                onChange={(e) => handleToggleSelect(r.id, e.target.checked)} />
       ),
     },
-    { title: '商品', dataIndex: 'productName', key: 'name' },
-    { title: '单价', dataIndex: 'price', key: 'price', render: (v: number) => `¥${v?.toFixed(2)}` },
     {
-      title: '数量', dataIndex: 'quantity', key: 'quantity',
+      title: '商品', key: 'product', width: 280,
+      render: (_: unknown, r: CartItem) => (
+        <Space>
+          <Image src={r.productImage || '/placeholder.png'} width={60} height={60}
+                 style={{ objectFit: 'cover', borderRadius: 4 }}
+                 fallback="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgZmlsbD0iI2VlZSIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIi8+PHRleHQgZmlsbD0iIzk5OSIgZm9udC1zaXplPSIxMiIgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYc8L3RleHQ+PC9zdmc+" />
+          <div>
+            <div style={{ fontWeight: 500 }}>{r.productName}</div>
+            {r.specText && <Tag style={{ marginTop: 4 }}>{r.specText}</Tag>}
+          </div>
+        </Space>
+      ),
+    },
+    { title: '单价', dataIndex: 'price', key: 'price', width: 100, render: (v: number) => `¥${v?.toFixed(2)}` },
+    {
+      title: '数量', dataIndex: 'quantity', key: 'quantity', width: 100,
       render: (v: number, r: CartItem) => (
         <InputNumber min={1} value={v} onChange={(q) => handleQuantityChange(r.id, q || 1)} />
       ),
     },
     {
-      title: '操作', key: 'action',
+      title: '操作', key: 'action', width: 80,
       render: (_: unknown, r: CartItem) => (
         <Popconfirm title="确定移除？" onConfirm={() => handleRemove(r.id)}>
           <Button icon={<DeleteOutlined />} danger size="small" />

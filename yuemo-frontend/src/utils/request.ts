@@ -1,12 +1,12 @@
 import axios from 'axios';
 import { message } from 'antd';
 
-const request = axios.create({
+const instance = axios.create({
   baseURL: '/api',
   timeout: 10000,
 });
 
-request.interceptors.request.use((config) => {
+instance.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -14,7 +14,7 @@ request.interceptors.request.use((config) => {
   return config;
 });
 
-request.interceptors.response.use(
+instance.interceptors.response.use(
   (response) => {
     const { code, message: msg, data } = response.data;
     if (code === 200) {
@@ -33,5 +33,17 @@ request.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// 包装后返回 T（拦截器已提取 data 字段）
+const request = {
+  get: <T = unknown>(url: string, config?: Parameters<typeof instance.get>[1]) =>
+    instance.get(url, config) as unknown as Promise<T>,
+  post: <T = unknown>(url: string, data?: unknown, config?: Parameters<typeof instance.post>[2]) =>
+    instance.post(url, data, config) as unknown as Promise<T>,
+  put: <T = unknown>(url: string, data?: unknown, config?: Parameters<typeof instance.put>[2]) =>
+    instance.put(url, data, config) as unknown as Promise<T>,
+  delete: <T = unknown>(url: string, config?: Parameters<typeof instance.delete>[1]) =>
+    instance.delete(url, config) as unknown as Promise<T>,
+};
 
 export default request;

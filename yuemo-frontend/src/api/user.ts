@@ -28,8 +28,9 @@ export interface UserInfo {
 }
 
 export const userApi = {
-  login: (params: LoginParams) => request.post<any, LoginResult>('/user/login', params),
+  login: (params: LoginParams) => request.post<LoginResult>('/user/login', params),
   register: (params: RegisterParams) => request.post('/user/register', params),
-  getUserInfo: () => request.get<any, UserInfo>('/user/info'),
+  getUserInfo: () => request.get<UserInfo>('/user/info'),
+  getBalance: () => request.get<number>('/user/balance'),
   logout: () => request.post('/user/logout'),
 };

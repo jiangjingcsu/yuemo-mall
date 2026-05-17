@@ -25,6 +25,8 @@ public interface ProductService {
 
     void updateStock(Long id, Integer quantity);
 
+    void restoreStock(Long id, Integer quantity);
+
     void updateSkuStock(Long skuId, Integer quantity);
 
     List<Category> getCategoryTree();

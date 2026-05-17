@@ -3,6 +3,8 @@ package com.yuemo.product.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yuemo.common.core.exception.BusinessException;
+import com.yuemo.common.core.response.ResultCode;
 import com.yuemo.product.entity.ProductReview;
 import com.yuemo.product.mapper.ProductReviewMapper;
 import com.yuemo.product.service.ReviewService;
@@ -66,6 +68,15 @@ public class ReviewServiceImpl implements ReviewService {
     @CacheEvict(value = "reviewSummary", key = "#productId")
     public void createReview(Long productId, Long userId, Long orderId, Long skuId,
                              Integer rating, String content, String images) {
+        // 防止重复评价同一订单中的同一商品
+        Long existingCount = reviewMapper.selectCount(new LambdaQueryWrapper<ProductReview>()
+                .eq(ProductReview::getUserId, userId)
+                .eq(ProductReview::getOrderId, orderId)
+                .eq(ProductReview::getProductId, productId));
+        if (existingCount > 0) {
+            throw new BusinessException(ResultCode.CONFLICT.getCode(), "该商品已评价，不能重复评价");
+        }
+
         ProductReview review = new ProductReview();
         review.setProductId(productId);
         review.setUserId(userId);

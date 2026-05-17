@@ -41,4 +41,26 @@ public class OrderController {
         orderService.cancelOrder(userId, id);
         return Result.success();
     }
+
+    @PostMapping("/ship/{id}")
+    public Result<Void> ship(@PathVariable Long id,
+                              @RequestParam String logisticsCompany,
+                              @RequestParam String logisticsNo) {
+        orderService.shipOrder(id, logisticsCompany, logisticsNo);
+        return Result.success();
+    }
+
+    @PostMapping("/confirm/{id}")
+    public Result<Void> confirm(@RequestAttribute("userId") Long userId,
+                                 @PathVariable Long id) {
+        orderService.confirmReceive(userId, id);
+        return Result.success();
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@RequestAttribute("userId") Long userId,
+                                @PathVariable Long id) {
+        orderService.deleteOrder(userId, id);
+        return Result.success();
+    }
 }

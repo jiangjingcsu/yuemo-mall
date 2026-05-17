@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS `yu_user` (
     `avatar` VARCHAR(512) DEFAULT NULL COMMENT '头像',
     `gender` TINYINT DEFAULT NULL COMMENT '性别 0-未知 1-男 2-女',
     `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0-正常 1-禁用',
+    `balance` DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '账户余额',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
@@ -94,7 +95,11 @@ CREATE TABLE IF NOT EXISTS `yu_order` (
     `status` TINYINT NOT NULL DEFAULT 0 COMMENT '0-待支付 1-已支付 2-已发货 3-已完成 4-已取消',
     `address_id` BIGINT DEFAULT NULL COMMENT '收货地址ID',
     `remark` VARCHAR(512) DEFAULT NULL COMMENT '备注',
+    `logistics_company` VARCHAR(64) DEFAULT NULL COMMENT '物流公司',
+    `logistics_no` VARCHAR(64) DEFAULT NULL COMMENT '物流单号',
     `pay_time` DATETIME DEFAULT NULL COMMENT '支付时间',
+    `delivery_time` DATETIME DEFAULT NULL COMMENT '发货时间',
+    `receive_time` DATETIME DEFAULT NULL COMMENT '收货时间',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
@@ -103,6 +108,20 @@ CREATE TABLE IF NOT EXISTS `yu_order` (
     KEY `idx_user_id` (`user_id`),
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';
+
+CREATE TABLE IF NOT EXISTS `yu_order_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `order_id` BIGINT NOT NULL COMMENT '订单ID',
+    `from_status` TINYINT DEFAULT NULL COMMENT '原状态',
+    `to_status` TINYINT NOT NULL COMMENT '新状态',
+    `operator` VARCHAR(64) DEFAULT NULL COMMENT '操作人',
+    `remark` VARCHAR(256) DEFAULT NULL COMMENT '备注',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_order_id` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单操作日志';
 
 CREATE TABLE IF NOT EXISTS `yu_order_item` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -132,7 +151,10 @@ CREATE TABLE IF NOT EXISTS `yu_payment` (
     `pay_type` TINYINT DEFAULT NULL COMMENT '支付方式 1-微信 2-支付宝',
     `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0-待支付 1-成功 2-失败 3-已退款',
     `third_trade_no` VARCHAR(64) DEFAULT NULL COMMENT '第三方交易号',
+    `refund_no` VARCHAR(32) DEFAULT NULL COMMENT '退款流水号',
+    `refund_reason` VARCHAR(512) DEFAULT NULL COMMENT '退款原因',
     `pay_time` DATETIME DEFAULT NULL COMMENT '支付时间',
+    `refund_time` DATETIME DEFAULT NULL COMMENT '退款时间',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
@@ -147,6 +169,8 @@ CREATE TABLE IF NOT EXISTS `yu_cart_item` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `product_id` BIGINT NOT NULL COMMENT '商品ID',
+    `sku_id` BIGINT DEFAULT NULL COMMENT 'SKU ID',
+    `spec_text` VARCHAR(128) DEFAULT NULL COMMENT '规格文本',
     `product_name` VARCHAR(128) DEFAULT NULL COMMENT '商品名称',
     `product_image` VARCHAR(512) DEFAULT NULL COMMENT '商品图片',
     `price` DECIMAL(10,2) DEFAULT NULL COMMENT '加入时价格',

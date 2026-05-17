@@ -5,6 +5,8 @@ import com.yuemo.user.dto.RegisterDTO;
 import com.yuemo.user.entity.User;
 import com.yuemo.user.vo.LoginVO;
 
+import java.math.BigDecimal;
+
 public interface UserService {
 
     void register(RegisterDTO dto);
@@ -16,4 +18,8 @@ public interface UserService {
     User getUserById(Long id);
 
     void updateUser(Long id, User user);
+
+    BigDecimal getBalance(Long userId);
+
+    void deductBalance(Long userId, BigDecimal amount);
 }

@@ -23,13 +23,12 @@ public class StockPreoccupyConsumer implements RocketMQListener<Map<Long, Intege
     @Override
     public void onMessage(Map<Long, Integer> stockMap) {
         log.info("收到预占库存消息: {}", stockMap);
-        stockMap.forEach((skuId, quantity) -> {
+        stockMap.forEach((productId, quantity) -> {
             try {
-                // Now operates at SKU level
-                productService.updateSkuStock(skuId, quantity);
-                log.info("预占库存成功: skuId={}, quantity={}", skuId, quantity);
+                productService.updateStock(productId, quantity);
+                log.info("预占库存成功: productId={}, quantity={}", productId, quantity);
             } catch (Exception e) {
-                log.error("预占库存失败: skuId={}, quantity={}", skuId, quantity, e);
+                log.error("预占库存失败: productId={}, quantity={}", productId, quantity, e);
                 throw e;
             }
         });

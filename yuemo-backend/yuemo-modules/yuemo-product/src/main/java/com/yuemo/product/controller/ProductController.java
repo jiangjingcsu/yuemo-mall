@@ -2,6 +2,7 @@ package com.yuemo.product.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.yuemo.common.core.response.Result;
+import com.yuemo.product.dto.CreateReviewRequest;
 import com.yuemo.product.dto.SearchCriteria;
 import com.yuemo.product.entity.Brand;
 import com.yuemo.product.entity.Category;
@@ -80,5 +81,14 @@ public class ProductController {
     @GetMapping("/{id}/review-summary")
     public Result<ReviewSummaryVO> reviewSummary(@PathVariable Long id) {
         return Result.success(reviewService.getReviewSummary(id));
+    }
+
+    @PostMapping("/{id}/review")
+    public Result<Void> createReview(@RequestAttribute("userId") Long userId,
+                                      @PathVariable Long id,
+                                      @Valid @RequestBody CreateReviewRequest request) {
+        reviewService.createReview(id, userId, request.orderId(), request.skuId(),
+                request.rating(), request.content(), request.images());
+        return Result.success();
     }
 }

@@ -41,8 +41,9 @@ export default function ProductDetail() {
   const handleAddToCart = async () => {
     const token = localStorage.getItem('token');
     if (!token) { navigate('/login'); return; }
+    if (!selectedSku) { message.warning('请选择规格'); return; }
     try {
-      await cartApi.add(Number(id), quantity);
+      await cartApi.add(selectedSku.id, quantity);
       message.success('已加入购物车');
     } catch { /* handled */ }
   };

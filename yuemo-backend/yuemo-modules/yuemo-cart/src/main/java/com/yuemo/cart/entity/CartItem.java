@@ -13,6 +13,8 @@ public class CartItem extends BaseEntity {
 
     private Long userId;
     private Long productId;
+    private Long skuId;
+    private String specText;
     private String productName;
     private String productImage;
     private BigDecimal price;

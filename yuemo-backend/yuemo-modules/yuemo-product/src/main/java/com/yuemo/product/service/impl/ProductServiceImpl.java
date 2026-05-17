@@ -265,6 +265,17 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void restoreStock(Long id, Integer quantity) {
+        Product product = productMapper.selectById(id);
+        if (product == null) {
+            throw new BusinessException(ResultCode.PRODUCT_NOT_FOUND);
+        }
+        product.setStock(product.getStock() + quantity);
+        productMapper.updateById(product);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateSkuStock(Long skuId, Integer quantity) {
         skuService.updateSkuStock(skuId, quantity);
     }

@@ -5,6 +5,8 @@ import com.yuemo.common.core.base.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("yu_user")
@@ -18,4 +20,5 @@ public class User extends BaseEntity {
     private String avatar;
     private Integer gender;
     private Integer status; // 0-正常 1-禁用
+    private BigDecimal balance; // 账户余额
 }

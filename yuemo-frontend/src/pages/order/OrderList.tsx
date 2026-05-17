@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Table, Tag, Button, message } from 'antd';
-import { orderApi, Order } from '../../api/order';
+import { Table, Tag, Button, Space, message } from 'antd';
+import { orderApi, Order, OrderPage } from '../../api/order';
 import dayjs from 'dayjs';
 
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
@@ -19,7 +19,7 @@ export default function OrderList() {
     setLoading(true);
     try {
       const data = await orderApi.getList({ page: 1, size: 50 });
-      setOrders((data as any).records || []);
+      setOrders(data.records || []);
     } finally {
       setLoading(false);
     }
@@ -31,6 +31,22 @@ export default function OrderList() {
     try {
       await orderApi.cancel(id);
       message.success('已取消');
+      fetchOrders();
+    } catch { /* handled */ }
+  };
+
+  const handleConfirm = async (id: number) => {
+    try {
+      await orderApi.confirm(id);
+      message.success('已确认收货');
+      fetchOrders();
+    } catch { /* handled */ }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await orderApi.delete(id);
+      message.success('已删除');
       fetchOrders();
     } catch { /* handled */ }
   };
@@ -54,12 +70,19 @@ export default function OrderList() {
     },
     {
       title: '操作', key: 'action',
-      render: (_: unknown, record: Order) =>
-        record.status === 0 && (
-          <Button size="small" danger onClick={() => handleCancel(record.id)}>
-            取消
-          </Button>
-        ),
+      render: (_: unknown, record: Order) => (
+        <Space>
+          {record.status === 0 && (
+            <Button size="small" danger onClick={() => handleCancel(record.id)}>取消</Button>
+          )}
+          {record.status === 2 && (
+            <Button size="small" type="primary" onClick={() => handleConfirm(record.id)}>确认收货</Button>
+          )}
+          {(record.status === 3 || record.status === 4) && (
+            <Button size="small" onClick={() => handleDelete(record.id)}>删除</Button>
+          )}
+        </Space>
+      ),
     },
   ];
 

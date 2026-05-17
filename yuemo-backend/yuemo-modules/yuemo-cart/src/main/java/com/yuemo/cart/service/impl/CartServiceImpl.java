@@ -6,10 +6,15 @@ import com.yuemo.common.core.response.ResultCode;
 import com.yuemo.cart.entity.CartItem;
 import com.yuemo.cart.mapper.CartItemMapper;
 import com.yuemo.cart.service.CartService;
+import com.yuemo.product.entity.Product;
+import com.yuemo.product.entity.ProductSku;
+import com.yuemo.product.mapper.ProductMapper;
+import com.yuemo.product.service.SkuService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -19,11 +24,29 @@ public class CartServiceImpl implements CartService {
 
     private final CartItemMapper cartItemMapper;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final SkuService skuService;
+    private final ProductMapper productMapper;
 
     private static final int MAX_CART_ITEMS = 100;
 
     @Override
-    public void addItem(Long userId, Long productId, Integer quantity) {
+    public void addItem(Long userId, Long skuId, Integer quantity) {
+        ProductSku sku = skuService.getSkuById(skuId);
+        if (sku == null || sku.getStatus() == null || sku.getStatus() != 1) {
+            throw new BusinessException(ResultCode.SKU_NOT_FOUND);
+        }
+        if (sku.getPrice() == null || sku.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ResultCode.BAD_REQUEST);
+        }
+        if (sku.getStock() == null || sku.getStock() <= 0) {
+            throw new BusinessException(ResultCode.SKU_STOCK_INSUFFICIENT);
+        }
+
+        Product product = productMapper.selectProductById(sku.getProductId());
+        if (product == null) {
+            throw new BusinessException(ResultCode.PRODUCT_NOT_FOUND);
+        }
+
         long count = cartItemMapper.selectCount(new LambdaQueryWrapper<CartItem>()
                 .eq(CartItem::getUserId, userId));
         if (count >= MAX_CART_ITEMS) {
@@ -32,30 +55,29 @@ public class CartServiceImpl implements CartService {
 
         CartItem existing = cartItemMapper.selectOne(new LambdaQueryWrapper<CartItem>()
                 .eq(CartItem::getUserId, userId)
-                .eq(CartItem::getProductId, productId));
+                .eq(CartItem::getSkuId, skuId));
         if (existing != null) {
             existing.setQuantity(existing.getQuantity() + quantity);
             cartItemMapper.updateById(existing);
         } else {
             CartItem item = new CartItem();
             item.setUserId(userId);
-            item.setProductId(productId);
+            item.setProductId(sku.getProductId());
+            item.setSkuId(skuId);
+            item.setSpecText(sku.getSpecText());
+            item.setProductName(product.getName());
+            item.setProductImage(product.getMainImage());
+            item.setPrice(sku.getPrice());
             item.setQuantity(quantity);
             item.setSelected(true);
-            // TODO: 查询商品名称/图片/价格
-            item.setProductName("商品" + productId);
-            item.setProductImage("");
-            item.setPrice(java.math.BigDecimal.ZERO);
             cartItemMapper.insert(item);
         }
 
-        // 刷新 Redis 缓存
         redisTemplate.delete("cart:user:" + userId);
     }
 
     @Override
     public List<CartItem> listItems(Long userId) {
-        // 优先查缓存
         String cacheKey = "cart:user:" + userId;
         @SuppressWarnings("unchecked")
         List<CartItem> cached = (List<CartItem>) redisTemplate.opsForValue().get(cacheKey);

@@ -3,6 +3,8 @@ package com.yuemo.user.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yuemo.common.core.exception.BusinessException;
 import com.yuemo.common.core.response.ResultCode;
+import com.yuemo.common.core.exception.BusinessException;
+import com.yuemo.common.core.response.ResultCode;
 import com.yuemo.common.core.utils.PasswordEncoder;
 import com.yuemo.common.security.utils.JwtTokenProvider;
 import com.yuemo.user.dto.LoginDTO;
@@ -14,7 +16,9 @@ import com.yuemo.user.vo.LoginVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -91,6 +95,24 @@ public class UserServiceImpl implements UserService {
     @Override
     public void updateUser(Long id, User user) {
         user.setId(id);
+        userMapper.updateById(user);
+    }
+
+    @Override
+    public BigDecimal getBalance(Long userId) {
+        User user = getUserById(userId);
+        return user.getBalance() != null ? user.getBalance() : BigDecimal.ZERO;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deductBalance(Long userId, BigDecimal amount) {
+        User user = getUserById(userId);
+        BigDecimal balance = user.getBalance() != null ? user.getBalance() : BigDecimal.ZERO;
+        if (balance.compareTo(amount) < 0) {
+            throw new BusinessException(ResultCode.USER_ALREADY_EXISTS.getCode(), "账户余额不足");
+        }
+        user.setBalance(balance.subtract(amount));
         userMapper.updateById(user);
     }
 }
