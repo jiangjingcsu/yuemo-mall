@@ -1,30 +1,35 @@
 stages:
   - build
-  - package
   - deploy
 
 variables:
-  MAVEN_CLI_OPTS: "-s .m2/settings.xml --batch-mode -Dmaven.test.skip=true"
-  DOCKER_IMAGE_BACKEND: $CI_REGISTRY_IMAGE/yuemo-mall-backend
-  DOCKER_IMAGE_FRONTEND: $CI_REGISTRY_IMAGE/yuemo-mall-frontend
+  MAVEN_CLI_OPTS: "--batch-mode -Dmaven.test.skip=true"
   DEPLOY_HOST: "192.168.1.45"
   DEPLOY_USER: "root"
+  DEPLOY_PATH: "/opt/yuemo-mall"
 
 .build_backend:
   image: maven:3.9-eclipse-temurin-17
   stage: build
+  cache:
+    key: maven-cache
+    paths:
+      - .m2/repository/
   script:
     - cd yuemo-backend
     - mvn $MAVEN_CLI_OPTS clean package
   artifacts:
     paths:
       - yuemo-backend/yuemo-server/target/*.jar
-      - yuemo-backend/yuemo-gateway/target/*.jar
     expire_in: 1 hour
 
 .build_frontend:
   image: node:20-alpine
   stage: build
+  cache:
+    key: npm-cache
+    paths:
+      - yuemo-frontend/node_modules/
   script:
     - cd yuemo-frontend
     - npm ci
@@ -34,61 +39,38 @@ variables:
       - yuemo-frontend/dist/
     expire_in: 1 hour
 
-.package_backend:
-  image: docker:27
-  stage: package
-  services:
-    - docker:27-dind
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-  before_script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-  script:
-    - cd yuemo-backend
-    - docker build
-      --build-arg JAR_FILE=yuemo-gateway/target/yuemo-gateway-*.jar
-      -t $DOCKER_IMAGE_BACKEND:$CI_COMMIT_SHORT_SHA
-      -t $DOCKER_IMAGE_BACKEND:latest
-      .
-    - docker push $DOCKER_IMAGE_BACKEND:$CI_COMMIT_SHORT_SHA
-    - docker push $DOCKER_IMAGE_BACKEND:latest
-
-.package_frontend:
-  image: docker:27
-  stage: package
-  services:
-    - docker:27-dind
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-  before_script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-  script:
-    - cd yuemo-frontend
-    - |
-      cat > Dockerfile <<'EOF'
-      FROM nginx:1.24-alpine
-      COPY dist/ /usr/share/nginx/html/
-      EXPOSE 80
-      EOF
-    - docker build -t $DOCKER_IMAGE_FRONTEND:$CI_COMMIT_SHORT_SHA -t $DOCKER_IMAGE_FRONTEND:latest .
-    - docker push $DOCKER_IMAGE_FRONTEND:$CI_COMMIT_SHORT_SHA
-    - docker push $DOCKER_IMAGE_FRONTEND:latest
-
-.deploy:
+.deploy_backend:
   image: alpine:3.20
   stage: deploy
   before_script:
-    - apk add --no-cache openssh-client
+    - apk add --no-cache openssh-client rsync
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh
     - echo "StrictHostKeyChecking no" > ~/.ssh/config
   script:
+    - rsync -az --delete yuemo-backend/ ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-backend/
     - ssh ${DEPLOY_USER}@${DEPLOY_HOST} "
-        echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY &&
-        cd /opt/yuemo-mall &&
-        docker compose pull &&
-        docker compose up -d --remove-orphans &&
+        cd ${DEPLOY_PATH}/yuemo-backend/docker &&
+        docker compose build yuemo-mall-1 &&
+        docker compose up -d --no-deps --build yuemo-mall-1 yuemo-mall-2 &&
+        docker image prune -f
+      "
+
+.deploy_frontend:
+  image: alpine:3.20
+  stage: deploy
+  before_script:
+    - apk add --no-cache openssh-client rsync
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - echo "StrictHostKeyChecking no" > ~/.ssh/config
+  script:
+    - rsync -az --delete yuemo-frontend/dist/ ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-frontend/dist/
+    - ssh ${DEPLOY_USER}@${DEPLOY_HOST} "
+        cd ${DEPLOY_PATH}/yuemo-frontend &&
+        docker compose up -d --no-deps --build nginx-frontend &&
         docker image prune -f
       "
 
@@ -108,32 +90,24 @@ build:frontend:
     - changes:
         - yuemo-frontend/**/*
 
-package:backend:
-  extends: .package_backend
+deploy:backend:
+  extends: .deploy_backend
   needs: [build:backend]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - yuemo-backend/**/*
+  environment:
+    name: production
+    url: http://192.168.1.45
 
-package:frontend:
-  extends: .package_frontend
+deploy:frontend:
+  extends: .deploy_frontend
   needs: [build:frontend]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - yuemo-frontend/**/*
-
-deploy:production:
-  extends: .deploy
-  needs:
-    - job: package:backend
-      optional: true
-    - job: package:frontend
-      optional: true
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: on_success
   environment:
     name: production
     url: http://192.168.1.45

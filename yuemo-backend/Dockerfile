@@ -1,13 +1,14 @@
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 
 LABEL maintainer="yuemo"
-LABEL description="月魔商城 — Spring Boot 3.4.5 单体应用 + JDK 21"
+LABEL description="月魔商城 — Spring Boot 3.2 单体应用 + JDK 17"
 
 RUN addgroup -S yuemo && adduser -S yuemo -G yuemo
 
 WORKDIR /app
 
-COPY yuemo-gateway/target/yuemo-gateway-*.jar /app/yuemo-mall.jar
+ARG JAR_FILE=yuemo-server/target/yuemo-server-*.jar
+COPY ${JAR_FILE} /app/yuemo-mall.jar
 
 RUN chown -R yuemo:yuemo /app
 
