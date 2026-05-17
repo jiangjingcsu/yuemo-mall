@@ -1,4 +1,4 @@
-# 御魔商城 (Yuemo Mall)
+# 月魔商城 (Yuemo Mall)
 
 基于 Spring Cloud Alibaba 微服务架构的全栈电商平台，包含后端服务和 React 前端应用。
 
@@ -13,7 +13,6 @@ Spring Cloud Alibaba 微服务架构，包含以下核心模块：
   - 熔断(Circuit Breaker)
   - 认证鉴权(Authentication)
   - 请求日志(Request Logging)
-
 - **yuemo-modules** - 业务模块
   - `yuemo-user` - 用户服务
   - `yuemo-product` - 商品服务
@@ -21,12 +20,10 @@ Spring Cloud Alibaba 微服务架构，包含以下核心模块：
   - `yuemo-order` - 订单服务
   - `yuemo-payment` - 支付服务
   - `yuemo-promotion` - 促销服务(优惠券)
-
 - **yuemo-common** - 公共组件
   - `common-core` - 核心工具类
   - `common-mybatis` - MyBatis Plus 配置
   - `common-security` - 安全工具(JWT)
-
 - **yuemo-admin** - 管理后台 API
 - **yuemo-server** - 服务启动器
 
@@ -98,13 +95,11 @@ yuemo_mall/
    - Redis
    - Nacos
    - Sentinel
-
 2. **数据库初始化**
    ```bash
    cd yuemo-backend/sql
    python database_init.py
    ```
-
 3. **启动服务**
    ```bash
    cd yuemo-backend
@@ -118,18 +113,15 @@ yuemo_mall/
 1. **环境要求**
    - Node.js 18+
    - npm 或 yarn
-
 2. **安装依赖**
    ```bash
    cd yuemo-frontend
    npm install
    ```
-
 3. **启动开发服务器**
    ```bash
    npm run dev
    ```
-
 4. **构建生产版本**
    ```bash
    npm run build
@@ -160,12 +152,14 @@ yuemo_mall/
 ## 📝 主要功能
 
 ### 用户模块
+
 - ✅ 用户注册与登录
 - ✅ JWT 身份认证
 - ✅ 收货地址管理
 - ✅ 个人中心
 
 ### 商品模块
+
 - ✅ 商品分类浏览
 - ✅ 商品搜索
 - ✅ 商品详情展示
@@ -173,12 +167,14 @@ yuemo_mall/
 - ✅ 商品评价
 
 ### 购物车模块
+
 - ✅ 添加商品到购物车
 - ✅ 修改商品数量
 - ✅ 删除购物车商品
 - ✅ 购物车商品清理
 
 ### 订单模块
+
 - ✅ 创建订单
 - ✅ 订单列表
 - ✅ 订单详情
@@ -186,11 +182,13 @@ yuemo_mall/
 - ✅ 库存事务处理
 
 ### 支付模块
+
 - ✅ 支付流程
 - ✅ 支付回调处理
 - ✅ 支付状态管理
 
 ### 促销模块
+
 - ✅ 优惠券领取
 - ✅ 优惠券使用
 - ✅ 优惠券管理
@@ -210,15 +208,15 @@ docker-compose up -d
 
 - 用户表 (user)
 - 商品表 (product)
-- SKU 表 (product_sku)
+- SKU 表 (product\_sku)
 - 分类表 (category)
 - 品牌表 (brand)
-- 购物车表 (cart_item)
+- 购物车表 (cart\_item)
 - 订单表 (order)
-- 订单项表 (order_item)
+- 订单项表 (order\_item)
 - 支付表 (payment)
 - 优惠券表 (coupon)
-- 商品标签表 (product_tag)
+- 商品标签表 (product\_tag)
 
 ## 🔐 API 网关
 
@@ -252,11 +250,13 @@ docker-compose up -d
 ## 🎯 开发指南
 
 ### 代码规范
+
 - 后端遵循 Spring Boot 代码规范
 - 前端使用 ESLint + Prettier
 - 使用 TypeScript 严格模式
 
 ### Git 提交规范
+
 ```
 feat: 新功能
 fix: 修复bug
