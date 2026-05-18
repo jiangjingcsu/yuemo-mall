@@ -1,0 +1,16 @@
+services:
+  nginx-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yuemo-mall-frontend:latest
+    container_name: nginx-frontend
+    ports:
+      - "8080:80"
+    restart: always
+    networks:
+      - yuemo-net
+
+networks:
+  yuemo-net:
+    external: true
