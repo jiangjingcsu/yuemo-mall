@@ -6,7 +6,7 @@ variables:
   MAVEN_CLI_OPTS: "--batch-mode -Dmaven.test.skip=true"
   DEPLOY_HOST: "192.168.1.45"
   DEPLOY_USER: "root"
-  DEPLOY_PATH: "/opt/yuemo-mall"
+  DEPLOY_PATH: "/opt/software/yuemo-mall"
 
 .build_backend:
   image: maven:3.9-eclipse-temurin-17
