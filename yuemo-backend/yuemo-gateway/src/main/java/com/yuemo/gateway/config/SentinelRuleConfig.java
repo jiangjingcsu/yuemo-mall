@@ -29,7 +29,7 @@ public class SentinelRuleConfig {
         rules.add(createFlowRule("api-payment", 30));
         rules.add(createFlowRule("api-cart", 100));
         rules.add(createFlowRule("api-coupon", 50));
-        rules.add(createFlowRule("api-admin", 30));
+        rules.add(createFlowRule("api-admin", 35));
 
         FlowRuleManager.loadRules(rules);
     }
