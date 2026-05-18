@@ -32,6 +32,7 @@ build:backend:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - yuemo-backend/**/*
+        - .gitlab-ci.yml
 
 # =========================
 # Frontend Build
@@ -55,6 +56,7 @@ build:frontend:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - yuemo-frontend/**/*
+        - .gitlab-ci.yml
 
 # =========================
 # Backend Docker Build
@@ -62,16 +64,11 @@ build:frontend:
 docker:backend:
   image: docker:27
   stage: docker
-  services:
-    - docker:27-dind
   needs:
     - build:backend
   script:
     - cd yuemo-backend
-    - docker build
-      -f Dockerfile
-      -t ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
-      .
+    - docker build -f Dockerfile -t ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} .
     - docker save -o ../backend.tar ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
   artifacts:
     paths:
@@ -81,6 +78,7 @@ docker:backend:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - yuemo-backend/**/*
+        - .gitlab-ci.yml
 
 # =========================
 # Frontend Docker Build
@@ -88,8 +86,6 @@ docker:backend:
 docker:frontend:
   image: docker:27
   stage: docker
-  services:
-    - docker:27-dind
   needs:
     - build:frontend
   script:
@@ -105,6 +101,7 @@ docker:frontend:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - yuemo-frontend/**/*
+        - .gitlab-ci.yml
 
 # =========================
 # Deploy Backend
@@ -121,12 +118,15 @@ deploy:backend:
     - mkdir -p ~/.ssh
     - echo "StrictHostKeyChecking no" > ~/.ssh/config
   script:
+    - ssh ${DEPLOY_USER}@${DEPLOY_HOST} "mkdir -p ${DEPLOY_PATH}/yuemo-backend/docker/nginx/conf.d"
+    - scp yuemo-backend/docker/docker-compose.yml ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-backend/docker/
+    - scp -r yuemo-backend/docker/nginx/* ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-backend/docker/nginx/
     - scp backend.tar ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/
     - |
       ssh ${DEPLOY_USER}@${DEPLOY_HOST} "
         docker load < ${DEPLOY_PATH}/backend.tar &&
         docker tag ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall:latest &&
-        docker compose -f ${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml up -d --no-deps yuemo-mall-1 yuemo-mall-2 &&
+        docker compose -f ${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml up -d &&
         docker image prune -f
       "
   environment:
@@ -136,6 +136,7 @@ deploy:backend:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - yuemo-backend/**/*
+        - .gitlab-ci.yml
 
 # =========================
 # Deploy Frontend
@@ -152,12 +153,14 @@ deploy:frontend:
     - mkdir -p ~/.ssh
     - echo "StrictHostKeyChecking no" > ~/.ssh/config
   script:
+    - ssh ${DEPLOY_USER}@${DEPLOY_HOST} "mkdir -p ${DEPLOY_PATH}/yuemo-frontend/docker"
+    - scp yuemo-frontend/docker/docker-compose.yml ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-frontend/docker/
     - scp frontend.tar ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/
     - |
       ssh ${DEPLOY_USER}@${DEPLOY_HOST} "
         docker load < ${DEPLOY_PATH}/frontend.tar &&
         docker tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall-frontend:latest &&
-        docker compose -f ${DEPLOY_PATH}/yuemo-frontend/docker/docker-compose.yml up -d --no-deps nginx-frontend &&
+        docker compose -f ${DEPLOY_PATH}/yuemo-frontend/docker/docker-compose.yml up -d &&
         docker image prune -f
       "
   environment:
@@ -167,3 +170,4 @@ deploy:frontend:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - yuemo-frontend/**/*
+        - .gitlab-ci.yml
