@@ -119,7 +119,7 @@ services:
     image: bladex/sentinel-dashboard:1.8.6
     container_name: sentinel-dashboard
     ports:
-      - "8080:8080"
+      - "8858:8080"
     restart: always
     networks:
       - yuemo-net
