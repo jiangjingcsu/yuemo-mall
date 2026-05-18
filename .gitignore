@@ -34,8 +34,6 @@ yuemo-backend/*.ipr
 yuemo-frontend/node_modules/
 yuemo-frontend/.pnp/
 yuemo-frontend/.pnp.js
-yuemo-frontend/package-lock.json
-
 # Frontend - Build
 yuemo-frontend/dist/
 yuemo-frontend/.next/
