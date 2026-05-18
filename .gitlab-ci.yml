@@ -115,7 +115,7 @@ deploy:backend:
     - cp -r yuemo-backend/docker/nginx/* ${DEPLOY_PATH}/yuemo-backend/docker/nginx/
     - docker load < backend.tar
     - docker tag ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall:latest
-    - docker compose -f ${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml up -d
+    - docker compose -f ${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml up -d --pull never
     - docker image prune -f
   environment:
     name: production
@@ -139,7 +139,7 @@ deploy:frontend:
     - cp yuemo-frontend/docker/docker-compose.yml ${DEPLOY_PATH}/yuemo-frontend/docker/
     - docker load < frontend.tar
     - docker tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall-frontend:latest
-    - docker compose -f ${DEPLOY_PATH}/yuemo-frontend/docker/docker-compose.yml up -d
+    - docker compose -f ${DEPLOY_PATH}/yuemo-frontend/docker/docker-compose.yml up -d --pull never
     - docker image prune -f
   environment:
     name: production
