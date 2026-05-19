@@ -129,5 +129,4 @@ volumes:
 
 networks:
   yuemo-net:
-    name: yuemo-net
-    driver: bridge
+    external: true
