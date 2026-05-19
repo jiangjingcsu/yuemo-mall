@@ -8,7 +8,7 @@ spring:
     baseline-version: 1
 
   datasource:
-    url: jdbc:mysql://${DB_HOST:192.168.1.55}:3306/yuemo_mall?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=15000&socketTimeout=30000&sslMode=DISABLED&cacheServerConfiguration=true&useServerPrepStmts=true&tcpKeepAlive=true&tcpNoDelay=true
+    url: jdbc:mysql://${DB_HOST:192.168.1.45}:3306/yuemo_mall?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=15000&socketTimeout=30000&sslMode=DISABLED&cacheServerConfiguration=true&useServerPrepStmts=true&tcpKeepAlive=true&tcpNoDelay=true
     username: ${DB_USER:root}
     password: ${DB_PASS}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -23,7 +23,7 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:192.168.1.55}
+      host: ${REDIS_HOST:192.168.1.45}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       lettuce:
@@ -43,7 +43,7 @@ jwt:
   refresh-token-expiration: 604800
 
 rocketmq:
-  name-server: ${ROCKETMQ_NS:192.168.1.55:9876}
+  name-server: ${ROCKETMQ_NS:192.168.1.45:9876}
   producer:
     group: yuemo-producer-group
     send-message-timeout: 3000
@@ -52,7 +52,7 @@ rocketmq:
 
 sentinel:
   transport:
-    dashboard: ${SENTINEL_DASHBOARD:192.168.1.55:8080}
+    dashboard: ${SENTINEL_DASHBOARD:192.168.1.45:8080}
   eager: true
 
 server:

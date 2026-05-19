@@ -161,13 +161,12 @@ deploy:backend:
         set -e
         cd ${DEPLOY_PATH}/yuemo-backend/docker
         echo 'Stopping conflicting containers if any...'
-        for c in yuemo-mall-1 yuemo-mall-2 yuemo-nginx redis-1 redis-2 redis-3 rocketmq-ns rocketmq-broker sentinel-dashboard; do
+        for c in yuemo-mall-1 yuemo-mall-2 yuemo-nginx; do
           docker stop \$c 2>/dev/null && docker rm \$c 2>/dev/null || true
         done
         tar xzf ${DEPLOY_PATH}/nginx-config.tar.gz -C ${DEPLOY_PATH}/yuemo-backend/docker/
         gunzip -c ${DEPLOY_PATH}/backend.tar.gz | docker load
         docker tag ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall:latest
-        docker pull bladex/sentinel-dashboard:1.8.6 2>/dev/null || true
         DB_PASS='${DB_PASS}' JWT_SECRET='${JWT_SECRET}' REDIS_PASSWORD='${REDIS_PASSWORD:-}' docker compose up -d --pull never --remove-orphans
         echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.backend-version
         docker image prune -f

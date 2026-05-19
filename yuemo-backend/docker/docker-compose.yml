@@ -1,16 +1,16 @@
 services:
-  # ============ 月魔商城 单体应用（多副本） ============
   yuemo-mall-1:
     image: yuemo-mall:latest
     container_name: yuemo-mall-1
     environment:
-      - DB_HOST=${DB_HOST:-192.168.1.55}
+      - DB_HOST=${DB_HOST:-192.168.1.45}
       - DB_USER=${DB_USER:-root}
       - DB_PASS=${DB_PASS:?DB_PASS must be set}
-      - SPRING_DATA_REDIS_CLUSTER_NODES=redis-1:6379,redis-2:6379,redis-3:6379
+      - REDIS_HOST=${REDIS_HOST:-192.168.1.45}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - ROCKETMQ_NS=rocketmq-ns:9876
-      - SENTINEL_DASHBOARD=sentinel-dashboard:8080
+      - ROCKETMQ_NS=${ROCKETMQ_NS:-192.168.1.45:9876}
+      - SENTINEL_DASHBOARD=${SENTINEL_DASHBOARD:-192.168.1.45:8080}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
     ports:
       - "8081:8080"
@@ -22,13 +22,14 @@ services:
     image: yuemo-mall:latest
     container_name: yuemo-mall-2
     environment:
-      - DB_HOST=${DB_HOST:-192.168.1.55}
+      - DB_HOST=${DB_HOST:-192.168.1.45}
       - DB_USER=${DB_USER:-root}
       - DB_PASS=${DB_PASS:?DB_PASS must be set}
-      - SPRING_DATA_REDIS_CLUSTER_NODES=redis-1:6379,redis-2:6379,redis-3:6379
+      - REDIS_HOST=${REDIS_HOST:-192.168.1.45}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - ROCKETMQ_NS=rocketmq-ns:9876
-      - SENTINEL_DASHBOARD=sentinel-dashboard:8080
+      - ROCKETMQ_NS=${ROCKETMQ_NS:-192.168.1.45:9876}
+      - SENTINEL_DASHBOARD=${SENTINEL_DASHBOARD:-192.168.1.45:8080}
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
     ports:
       - "8082:8080"
@@ -36,7 +37,6 @@ services:
     networks:
       - yuemo-net
 
-  # ============ Nginx 负载均衡 ============
   nginx:
     image: nginx:1.24-alpine
     container_name: yuemo-nginx
@@ -52,80 +52,6 @@ services:
     restart: always
     networks:
       - yuemo-net
-
-  # ============ Redis Cluster ============
-  redis-1:
-    image: redis:7.0
-    container_name: redis-1
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-}
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-1-data:/data
-    restart: always
-    networks:
-      - yuemo-net
-
-  redis-2:
-    image: redis:7.0
-    container_name: redis-2
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-}
-    volumes:
-      - redis-2-data:/data
-    restart: always
-    networks:
-      - yuemo-net
-
-  redis-3:
-    image: redis:7.0
-    container_name: redis-3
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-}
-    volumes:
-      - redis-3-data:/data
-    restart: always
-    networks:
-      - yuemo-net
-
-  # ============ RocketMQ ============
-  rocketmq-ns:
-    image: apache/rocketmq:5.3.1
-    container_name: rocketmq-ns
-    command: sh mqnamesrv
-    ports:
-      - "9876:9876"
-    restart: always
-    networks:
-      - yuemo-net
-
-  rocketmq-broker:
-    image: apache/rocketmq:5.3.1
-    container_name: rocketmq-broker
-    environment:
-      - NAMESRV_ADDR=rocketmq-ns:9876
-    command: sh mqbroker -n rocketmq-ns:9876
-    ports:
-      - "10909:10909"
-      - "10911:10911"
-    depends_on:
-      - rocketmq-ns
-    restart: always
-    networks:
-      - yuemo-net
-
-  # ============ Sentinel Dashboard ============
-  sentinel-dashboard:
-    image: bladex/sentinel-dashboard:1.8.6
-    container_name: sentinel-dashboard
-    ports:
-      - "8858:8080"
-    restart: always
-    networks:
-      - yuemo-net
-
-volumes:
-  redis-1-data:
-  redis-2-data:
-  redis-3-data:
 
 networks:
   yuemo-net:
