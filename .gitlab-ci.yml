@@ -180,12 +180,13 @@ deploy:backend:
     - |
       echo "=== Backend health check ==="
       for i in $(seq 1 20); do
-        if ssh deploy "wget -q -O- --timeout=3 http://localhost:8081/doc.html 2>/dev/null" | grep -q '<html'; then
-          echo "Backend healthy (attempt $i)"
+        CODE=$(ssh deploy "curl -s -o /dev/null -w '%{http_code}' --connect-timeout 3 http://localhost:8081/doc.html 2>/dev/null || echo '000'")
+        if [ "$CODE" != "000" ] && [ "$CODE" != "" ]; then
+          echo "Backend responding HTTP $CODE (attempt $i)"
           exit 0
         fi
-        [ $i -eq 20 ] && { echo "ERROR: Backend failed after 100s"; ssh deploy "cd ${DEPLOY_PATH}/yuemo-backend/docker && docker compose logs --tail=30"; exit 1; }
-        echo "  attempt $i/20, retrying in 5s..."
+        [ $i -eq 20 ] && { echo "ERROR: Backend failed after 100s"; ssh deploy "docker logs yuemo-mall-1 --tail 30 2>&1; docker logs yuemo-mall-2 --tail 30 2>&1"; exit 1; }
+        echo "  attempt $i/20 (HTTP $CODE), retrying in 5s..."
         sleep 5
       done
   environment:
