@@ -158,7 +158,8 @@ deploy:backend:
     - echo "=== Transfer artifacts to ${DEPLOY_HOST} ==="
     - scp backend.tar.gz deploy:${DEPLOY_PATH}/backend.tar.gz
     - scp yuemo-backend/docker/docker-compose.yml deploy:${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml
-    - scp -r yuemo-backend/docker/nginx/ deploy:${DEPLOY_PATH}/yuemo-backend/docker/nginx/
+    - tar czf nginx-config.tar.gz -C yuemo-backend/docker nginx/
+    - scp nginx-config.tar.gz deploy:${DEPLOY_PATH}/nginx-config.tar.gz
     - |
       echo "=== Load image and deploy on ${DEPLOY_HOST} ==="
       ssh deploy "
@@ -168,6 +169,7 @@ deploy:backend:
         for c in yuemo-mall-1 yuemo-mall-2 yuemo-nginx redis-1 redis-2 redis-3 rocketmq-ns rocketmq-broker sentinel-dashboard; do
           docker stop \$c 2>/dev/null && docker rm \$c 2>/dev/null || true
         done
+        tar xzf ${DEPLOY_PATH}/nginx-config.tar.gz -C ${DEPLOY_PATH}/yuemo-backend/docker/
         gunzip -c ${DEPLOY_PATH}/backend.tar.gz | docker load
         docker tag ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall:latest
         DB_PASS='${DB_PASS}' JWT_SECRET='${JWT_SECRET}' REDIS_PASSWORD='${REDIS_PASSWORD:-}' docker compose up -d --pull never --remove-orphans
