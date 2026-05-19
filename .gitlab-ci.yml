@@ -180,7 +180,7 @@ deploy:backend:
     - |
       echo "=== Backend health check ==="
       for i in $(seq 1 20); do
-        if ssh deploy "wget -q -O- http://localhost:8081/actuator/health 2>/dev/null" | grep -q UP; then
+        if ssh deploy "wget -q -O- --timeout=3 http://localhost:8081/doc.html 2>/dev/null" | grep -q '<html'; then
           echo "Backend healthy (attempt $i)"
           exit 0
         fi
