@@ -5,7 +5,7 @@ stages:
 
 variables:
   MAVEN_CLI_OPTS: "--batch-mode -DfailIfNoTests=false -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
-  DEPLOY_HOST: "${DEPLOY_HOST:-192.168.1.45}"
+  DEPLOY_HOST: "${DEPLOY_HOST:-192.168.1.55}"
   DEPLOY_USER: "${DEPLOY_USER:-root}"
   DEPLOY_PATH: "/opt/software/yuemo-mall"
   BACKEND_IMAGE: "yuemo-mall-backend"
@@ -134,7 +134,7 @@ docker:frontend:
         - .gitlab-ci.yml
 
 # =========================
-# Deploy Backend (SSH to 192.168.1.45)
+# Deploy Backend (SSH to 192.168.1.55)
 # =========================
 deploy:backend:
   image: alpine:3.20
@@ -191,7 +191,7 @@ deploy:backend:
       done
   environment:
     name: production
-    url: http://192.168.1.45
+    url: http://192.168.1.55
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
@@ -199,7 +199,7 @@ deploy:backend:
         - .gitlab-ci.yml
 
 # =========================
-# Deploy Frontend (SSH to 192.168.1.45)
+# Deploy Frontend (SSH to 192.168.1.55)
 # =========================
 deploy:frontend:
   image: alpine:3.20
@@ -252,7 +252,7 @@ deploy:frontend:
       done
   environment:
     name: production
-    url: http://192.168.1.45
+    url: http://192.168.1.55
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:

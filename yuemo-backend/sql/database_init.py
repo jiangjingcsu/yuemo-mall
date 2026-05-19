@@ -207,7 +207,7 @@ def main():
     print("=" * 60)
 
     db_config = {
-        'host': '192.168.1.45',
+        'host': '192.168.1.55',
         'port': 3306,
         'user': 'root',
         'password': 'jiangjing'

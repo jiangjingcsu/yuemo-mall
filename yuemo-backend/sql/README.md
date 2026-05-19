@@ -21,7 +21,7 @@ pip install -r requirements.txt
 
 ```python
 db_config = {
-    'host': '192.168.1.45',
+    'host': '192.168.1.55',
     'port': 3306,
     'user': 'root',
     'password': 'jiangjing'
@@ -116,12 +116,12 @@ DROP DATABASE IF EXISTS yuemo_mall;
 ============================================================
 
 数据库配置:
-  主机: 192.168.1.45
+  主机: 192.168.1.55
   端口: 3306
   用户: root
   SQL目录: D:\workspace\yuemo_mall\yuemo-backend\sql
 
-✓ 成功连接到数据库 192.168.1.45:3306
+✓ 成功连接到数据库 192.168.1.55:3306
 
 找到 7 个SQL文件:
   1. init-all.sql

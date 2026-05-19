@@ -16,6 +16,7 @@ public class AdminCouponController {
     @PostMapping
     public Result<Void> create(@RequestBody Coupon coupon) {
         couponService.createCoupon(coupon);
+        System.out.println("创建优惠券成功");
         return Result.success();
     }
 }
