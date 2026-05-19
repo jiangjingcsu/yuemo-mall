@@ -11,6 +11,7 @@ variables:
   BACKEND_IMAGE: "yuemo-mall-backend"
   FRONTEND_IMAGE: "yuemo-mall-frontend"
   DOCKER_HOST: "unix:///var/run/docker.sock"
+  SSHPASS: "${SSH_PASSWORD}"
 
 # =========================
 # Backend Build (Maven)
@@ -144,25 +145,19 @@ deploy:backend:
   needs:
     - docker:backend
   before_script:
-    - apk add --no-cache openssh-client
-    - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ecdsa_ci
-    - chmod 600 ~/.ssh/id_ecdsa_ci
-    - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
-    - printf "Host deploy\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ecdsa_ci\n  StrictHostKeyChecking no\n  ConnectTimeout 10\n" "$DEPLOY_HOST" "$DEPLOY_USER" > ~/.ssh/config
-    - chmod 600 ~/.ssh/config
-    - '[ -z "$SSH_PRIVATE_KEY" ] && echo "ERROR: SSH_PRIVATE_KEY not set" && exit 1 || true'
-    - '[ -z "$DB_PASS" ] && echo "ERROR: DB_PASS not set" && exit 1 || true'
-    - '[ -z "$JWT_SECRET" ] && echo "ERROR: JWT_SECRET not set" && exit 1 || true'
+    - apk add --no-cache openssh-client sshpass
+    - '[ -z "$SSH_PASSWORD" ] && echo "ERROR: SSH_PASSWORD not set in GitLab CI/CD Variables" && exit 1 || true'
+    - '[ -z "$DB_PASS" ] && echo "ERROR: DB_PASS not set in GitLab CI/CD Variables" && exit 1 || true'
+    - '[ -z "$JWT_SECRET" ] && echo "ERROR: JWT_SECRET not set in GitLab CI/CD Variables" && exit 1 || true'
   script:
     - echo "=== Transfer artifacts to ${DEPLOY_HOST} ==="
-    - scp backend.tar.gz deploy:${DEPLOY_PATH}/backend.tar.gz
-    - scp yuemo-backend/docker/docker-compose.yml deploy:${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml
+    - sshpass -e scp -o StrictHostKeyChecking=no backend.tar.gz ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/backend.tar.gz
+    - sshpass -e scp -o StrictHostKeyChecking=no yuemo-backend/docker/docker-compose.yml ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml
     - tar czf nginx-config.tar.gz -C yuemo-backend/docker nginx/
-    - scp nginx-config.tar.gz deploy:${DEPLOY_PATH}/nginx-config.tar.gz
+    - sshpass -e scp -o StrictHostKeyChecking=no nginx-config.tar.gz ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/nginx-config.tar.gz
     - |
       echo "=== Load image and deploy on ${DEPLOY_HOST} ==="
-      ssh deploy "
+      sshpass -e ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
         set -e
         cd ${DEPLOY_PATH}/yuemo-backend/docker
         echo 'Stopping conflicting containers if any...'
@@ -180,12 +175,12 @@ deploy:backend:
     - |
       echo "=== Backend health check ==="
       for i in $(seq 1 20); do
-        CODE=$(ssh deploy "curl -s -o /dev/null -w '%{http_code}' --connect-timeout 3 http://localhost:8081/doc.html 2>/dev/null || echo '000'")
+        CODE=$(sshpass -e ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "curl -s -o /dev/null -w '%{http_code}' --connect-timeout 3 http://localhost:8081/doc.html 2>/dev/null || echo '000'")
         if [ "$CODE" != "000" ] && [ "$CODE" != "" ]; then
           echo "Backend responding HTTP $CODE (attempt $i)"
           exit 0
         fi
-        [ $i -eq 20 ] && { echo "ERROR: Backend failed after 100s"; ssh deploy "docker logs yuemo-mall-1 --tail 30 2>&1; docker logs yuemo-mall-2 --tail 30 2>&1"; exit 1; }
+        [ $i -eq 20 ] && { echo "ERROR: Backend failed after 100s"; sshpass -e ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "docker logs yuemo-mall-1 --tail 30 2>&1; docker logs yuemo-mall-2 --tail 30 2>&1"; exit 1; }
         echo "  attempt $i/20 (HTTP $CODE), retrying in 5s..."
         sleep 5
       done
@@ -209,21 +204,15 @@ deploy:frontend:
   needs:
     - docker:frontend
   before_script:
-    - apk add --no-cache openssh-client
-    - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ecdsa_ci
-    - chmod 600 ~/.ssh/id_ecdsa_ci
-    - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
-    - printf "Host deploy\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ecdsa_ci\n  StrictHostKeyChecking no\n  ConnectTimeout 10\n" "$DEPLOY_HOST" "$DEPLOY_USER" > ~/.ssh/config
-    - chmod 600 ~/.ssh/config
-    - '[ -z "$SSH_PRIVATE_KEY" ] && echo "ERROR: SSH_PRIVATE_KEY not set" && exit 1 || true'
+    - apk add --no-cache openssh-client sshpass
+    - '[ -z "$SSH_PASSWORD" ] && echo "ERROR: SSH_PASSWORD not set in GitLab CI/CD Variables" && exit 1 || true'
   script:
     - echo "=== Transfer artifacts to ${DEPLOY_HOST} ==="
-    - scp frontend.tar.gz deploy:${DEPLOY_PATH}/frontend.tar.gz
-    - scp yuemo-frontend/docker/docker-compose.yml deploy:${DEPLOY_PATH}/yuemo-frontend/docker/docker-compose.yml
+    - sshpass -e scp -o StrictHostKeyChecking=no frontend.tar.gz ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/frontend.tar.gz
+    - sshpass -e scp -o StrictHostKeyChecking=no yuemo-frontend/docker/docker-compose.yml ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-frontend/docker/docker-compose.yml
     - echo "=== Load image and deploy on ${DEPLOY_HOST} ==="
     - >
-      ssh deploy "
+      sshpass -e ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
         set -e
         docker stop nginx-frontend 2>/dev/null || true
         docker rm nginx-frontend 2>/dev/null || true
@@ -238,12 +227,12 @@ deploy:frontend:
     - echo "=== Frontend health check ==="
     - >
       i=1; while [ $i -le 10 ]; do
-        if ssh deploy "wget -q -O- http://localhost:8080" | grep -q '<html'; then
+        if sshpass -e ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "wget -q -O- http://localhost:8080" | grep -q '<html'; then
           echo "Frontend healthy (attempt $i)"; exit 0;
         fi;
         if [ $i -eq 10 ]; then
           echo "ERROR: Frontend failed after 30s";
-          ssh deploy "cd ${DEPLOY_PATH}/yuemo-frontend/docker && docker compose logs --tail=20";
+          sshpass -e ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "cd ${DEPLOY_PATH}/yuemo-frontend/docker && docker compose logs --tail=20";
           exit 1;
         fi;
         echo "  attempt $i/10, retrying in 3s...";

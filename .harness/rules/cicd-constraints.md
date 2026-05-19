@@ -36,6 +36,7 @@ build → docker → deploy（3 阶段）
 - YAML 语法正确性
 - 镜像名称在 CI 和 docker-compose.yml 之间一致
 - 构建路径与项目实际目录结构匹配
-- `SSH_PRIVATE_KEY`、`DB_PASS`、`JWT_SECRET` 通过 GitLab CI/CD Variables 管理
+- `SSH_PASSWORD`、`DB_PASS`、`JWT_SECRET` 通过 GitLab CI/CD Variables 管理
+- SSH 认证使用 sshpass 密码方式（`sshpass -e`），密码从 `SSHPASS` 环境变量读取
 - 禁止在日志中输出敏感变量
 - 部署脚本中使用 `${VAR:?error message}` 确保必要变量存在
