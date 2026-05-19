@@ -85,10 +85,10 @@ docker:backend:
       -t ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
       -t ${BACKEND_IMAGE}:latest
       .
-    - docker save -o ../backend.tar ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
+    - docker save ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} | gzip > ../backend.tar.gz
   artifacts:
     paths:
-      - backend.tar
+      - backend.tar.gz
       - yuemo-backend/docker/docker-compose.yml
       - yuemo-backend/docker/nginx/
     expire_in: 1 hour
@@ -121,10 +121,10 @@ docker:frontend:
       -t ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
       -t ${FRONTEND_IMAGE}:latest
       .
-    - docker save -o ../../frontend.tar ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
+    - docker save ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA} | gzip > ../../frontend.tar.gz
   artifacts:
     paths:
-      - frontend.tar
+      - frontend.tar.gz
       - yuemo-frontend/docker/docker-compose.yml
     expire_in: 1 hour
   rules:
@@ -156,7 +156,7 @@ deploy:backend:
     - '[ -z "$JWT_SECRET" ] && echo "ERROR: JWT_SECRET not set" && exit 1 || true'
   script:
     - echo "=== Transfer artifacts to ${DEPLOY_HOST} ==="
-    - scp backend.tar deploy:${DEPLOY_PATH}/backend.tar
+    - scp backend.tar.gz deploy:${DEPLOY_PATH}/backend.tar.gz
     - scp yuemo-backend/docker/docker-compose.yml deploy:${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml
     - scp -r yuemo-backend/docker/nginx/ deploy:${DEPLOY_PATH}/yuemo-backend/docker/nginx/
     - |
@@ -168,7 +168,7 @@ deploy:backend:
         for c in yuemo-mall-1 yuemo-mall-2 yuemo-nginx redis-1 redis-2 redis-3 rocketmq-ns rocketmq-broker sentinel-dashboard; do
           docker stop \$c 2>/dev/null && docker rm \$c 2>/dev/null || true
         done
-        docker load < ${DEPLOY_PATH}/backend.tar
+        gunzip -c ${DEPLOY_PATH}/backend.tar.gz | docker load
         docker tag ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall:latest
         DB_PASS='${DB_PASS}' JWT_SECRET='${JWT_SECRET}' REDIS_PASSWORD='${REDIS_PASSWORD:-}' docker compose up -d --pull never --remove-orphans
         echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.backend-version
@@ -215,10 +215,21 @@ deploy:frontend:
     - '[ -z "$SSH_PRIVATE_KEY" ] && echo "ERROR: SSH_PRIVATE_KEY not set" && exit 1 || true'
   script:
     - echo "=== Transfer artifacts to ${DEPLOY_HOST} ==="
-    - scp frontend.tar deploy:${DEPLOY_PATH}/frontend.tar
+    - scp frontend.tar.gz deploy:${DEPLOY_PATH}/frontend.tar.gz
     - scp yuemo-frontend/docker/docker-compose.yml deploy:${DEPLOY_PATH}/yuemo-frontend/docker/docker-compose.yml
     - echo "=== Load image and deploy on ${DEPLOY_HOST} ==="
-    - ssh deploy "set -e; docker stop nginx-frontend 2>/dev/null; docker rm nginx-frontend 2>/dev/null; docker load < ${DEPLOY_PATH}/frontend.tar; docker tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall-frontend:latest; cd ${DEPLOY_PATH}/yuemo-frontend/docker && docker compose up -d --pull never --remove-orphans; echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.frontend-version; docker image prune -f; true"
+    - >
+      ssh deploy "
+        set -e
+        docker stop nginx-frontend 2>/dev/null || true
+        docker rm nginx-frontend 2>/dev/null || true
+        gunzip -c ${DEPLOY_PATH}/frontend.tar.gz | docker load
+        docker tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall-frontend:latest
+        cd ${DEPLOY_PATH}/yuemo-frontend/docker
+        docker compose up -d --pull never --remove-orphans
+        echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.frontend-version
+        docker image prune -f
+      "
     - echo "=== Frontend health check ==="
     - >
       i=1; while [ $i -le 10 ]; do
