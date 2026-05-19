@@ -1,20 +1,17 @@
 services:
   # ============ 月魔商城 单体应用（多副本） ============
   yuemo-mall-1:
-    build:
-      context: ..
-      dockerfile: Dockerfile
     image: yuemo-mall:latest
     container_name: yuemo-mall-1
     environment:
       - DB_HOST=${DB_HOST:-192.168.1.45}
       - DB_USER=${DB_USER:-root}
-      - DB_PASS=${DB_PASS:-jiangjing}
+      - DB_PASS=${DB_PASS:?DB_PASS must be set}
       - SPRING_DATA_REDIS_CLUSTER_NODES=redis-1:6379,redis-2:6379,redis-3:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - ROCKETMQ_NS=rocketmq-ns:9876
       - SENTINEL_DASHBOARD=sentinel-dashboard:8080
-      - JWT_SECRET=${JWT_SECRET:-yuemo-mall-production-secret-key-change-me!!}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
     ports:
       - "8081:8080"
     restart: always
@@ -27,12 +24,12 @@ services:
     environment:
       - DB_HOST=${DB_HOST:-192.168.1.45}
       - DB_USER=${DB_USER:-root}
-      - DB_PASS=${DB_PASS:-jiangjing}
+      - DB_PASS=${DB_PASS:?DB_PASS must be set}
       - SPRING_DATA_REDIS_CLUSTER_NODES=redis-1:6379,redis-2:6379,redis-3:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - ROCKETMQ_NS=rocketmq-ns:9876
       - SENTINEL_DASHBOARD=sentinel-dashboard:8080
-      - JWT_SECRET=${JWT_SECRET:-yuemo-mall-production-secret-key-change-me!!}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
     ports:
       - "8082:8080"
     restart: always
@@ -59,7 +56,7 @@ services:
   redis-1:
     image: redis:7.0
     container_name: redis-1
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-jiangjing}
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-}
     ports:
       - "6379:6379"
     volumes:
@@ -71,7 +68,7 @@ services:
   redis-2:
     image: redis:7.0
     container_name: redis-2
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-jiangjing}
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-}
     volumes:
       - redis-2-data:/data
     restart: always
@@ -81,7 +78,7 @@ services:
   redis-3:
     image: redis:7.0
     container_name: redis-3
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-jiangjing}
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --requirepass ${REDIS_PASSWORD:-}
     volumes:
       - redis-3-data:/data
     restart: always
@@ -131,4 +128,5 @@ volumes:
 
 networks:
   yuemo-net:
+    name: yuemo-net
     driver: bridge
