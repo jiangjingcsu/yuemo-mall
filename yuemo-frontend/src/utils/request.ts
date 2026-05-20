@@ -29,6 +29,17 @@ instance.interceptors.response.use(
     return Promise.reject(new Error(msg));
   },
   (error) => {
+    if (error.response) {
+      const { status, data } = error.response;
+      if (status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return Promise.reject(new Error('登录已过期'));
+      }
+      const msg = data?.message || data?.msg || `请求失败(${status})`;
+      message.error(msg);
+      return Promise.reject(new Error(msg));
+    }
     message.error(error.message || '网络异常');
     return Promise.reject(error);
   }

@@ -1,5 +1,6 @@
 package com.yuemo.gateway.exception;
 
+import com.yuemo.common.core.exception.BusinessException;
 import com.yuemo.common.core.response.Result;
 import com.yuemo.common.core.response.ResultCode;
 import org.slf4j.Logger;
@@ -9,13 +10,17 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/**
- * 网关层全局异常处理 — 兜底未在 Filter 中捕获的异常
- */
 @RestControllerAdvice
 public class GatewayExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GatewayExceptionHandler.class);
+
+    @ExceptionHandler(BusinessException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public Result<Void> handleBusinessException(BusinessException e) {
+        log.warn("业务异常: code={}, message={}", e.getCode(), e.getMessage());
+        return Result.fail(e.getCode(), e.getMessage());
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

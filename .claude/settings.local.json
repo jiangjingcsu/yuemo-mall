@@ -25,7 +25,11 @@
       "Bash(Get-ChildItem *)",
       "Bash(Select-Object *)",
       "Bash(python3 *)",
-      "Bash(sshpass *)"
+      "Bash(sshpass *)",
+      "PowerShell(Get-Command *)",
+      "Bash(choco install *)",
+      "Bash(winget install *)",
+      "PowerShell(sshpass *)"
     ]
   }
 }
