@@ -10,7 +10,7 @@ WORKDIR /app
 ARG JAR_FILE=yuemo-server/target/yuemo-server-*.jar
 COPY ${JAR_FILE} /app/yuemo-mall.jar
 
-RUN chown -R yuemo:yuemo /app
+RUN mkdir -p /app/logs && chown -R yuemo:yuemo /app
 
 USER yuemo
 

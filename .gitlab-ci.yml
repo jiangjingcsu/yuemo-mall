@@ -162,6 +162,7 @@ deploy:backend:
         set -e
         cd ${DEPLOY_PATH}/yuemo-backend/docker
         tar xzf ${DEPLOY_PATH}/nginx-config.tar.gz -C ${DEPLOY_PATH}/yuemo-backend/docker/
+        mkdir -p ./logs/yuemo-mall-1 ./logs/yuemo-mall-2
         docker network create backend-net 2>/dev/null || true
         echo 'Stopping conflicting containers if any...'
         for c in yuemo-mall-1 yuemo-mall-2; do

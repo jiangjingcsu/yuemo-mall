@@ -24,7 +24,8 @@
       "Bash(curl.exe *)",
       "Bash(Get-ChildItem *)",
       "Bash(Select-Object *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(sshpass *)"
     ]
   }
 }
