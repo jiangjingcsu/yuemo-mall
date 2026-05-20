@@ -8,9 +8,8 @@ variables:
   DEPLOY_HOST: "${DEPLOY_HOST:-192.168.1.55}"
   DEPLOY_USER: "${DEPLOY_USER:-root}"
   DEPLOY_PATH: "/opt/software/yuemo-mall"
-  REGISTRY: "192.168.1.53:5000"
-  BACKEND_IMAGE: "${REGISTRY}/yuemo-mall-backend"
-  FRONTEND_IMAGE: "${REGISTRY}/yuemo-mall-frontend"
+  BACKEND_IMAGE: "${CI_REGISTRY}/jiangjingcsu/yuemo-mall/yuemo-mall-backend"
+  FRONTEND_IMAGE: "${CI_REGISTRY}/jiangjingcsu/yuemo-mall/yuemo-mall-frontend"
   DOCKER_HOST: "unix:///var/run/docker.sock"
   SSHPASS: "${SSH_PASSWORD}"
 
@@ -77,6 +76,7 @@ docker:backend:
     - build:backend
   before_script:
     - until docker info > /dev/null 2>&1; do echo "waiting for docker..."; sleep 2; done
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
     - cd yuemo-backend
     - >
@@ -112,6 +112,7 @@ docker:frontend:
     - build:frontend
   before_script:
     - until docker info > /dev/null 2>&1; do echo "waiting for docker..."; sleep 2; done
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
   script:
     - cd yuemo-frontend
     - >
@@ -148,8 +149,6 @@ deploy:backend:
   before_script:
     - apk add --no-cache openssh-client sshpass
     - '[ -z "$SSH_PASSWORD" ] && echo "ERROR: SSH_PASSWORD not set in GitLab CI/CD Variables" && exit 1 || true'
-    - '[ -z "$DB_PASS" ] && echo "ERROR: DB_PASS not set in GitLab CI/CD Variables" && exit 1 || true'
-    - '[ -z "$JWT_SECRET" ] && echo "ERROR: JWT_SECRET not set in GitLab CI/CD Variables" && exit 1 || true'
   script:
     - echo "=== Transfer configs to ${DEPLOY_HOST} ==="
     - sshpass -e scp -o StrictHostKeyChecking=no yuemo-backend/docker/docker-compose.yml ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml
@@ -166,8 +165,9 @@ deploy:backend:
         for c in yuemo-mall-1 yuemo-mall-2; do
           docker stop \$c 2>/dev/null && docker rm \$c 2>/dev/null || true
         done
+        echo '${CI_REGISTRY_PASSWORD}' | docker login ${CI_REGISTRY} -u '${CI_REGISTRY_USER}' --password-stdin
         docker pull ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
-        IMAGE_TAG=${CI_COMMIT_SHORT_SHA} DB_PASS='${DB_PASS}' JWT_SECRET='${JWT_SECRET}' REDIS_PASSWORD='${REDIS_PASSWORD:-}' docker compose up -d --remove-orphans
+        IMAGE_TAG=${CI_COMMIT_SHORT_SHA} docker compose up -d --remove-orphans
         echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.backend-version
         docker image prune -f
       "
@@ -214,6 +214,7 @@ deploy:frontend:
         set -e
         docker stop frontend-server 2>/dev/null || true
         docker rm frontend-server 2>/dev/null || true
+        echo '${CI_REGISTRY_PASSWORD}' | docker login ${CI_REGISTRY} -u '${CI_REGISTRY_USER}' --password-stdin
         docker pull ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
         docker network create frontend-net 2>/dev/null || true
         cd ${DEPLOY_PATH}/yuemo-frontend/docker

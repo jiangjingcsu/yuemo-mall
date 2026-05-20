@@ -1,6 +1,6 @@
 services:
   frontend-server:
-    image: 192.168.1.53:5000/yuemo-mall-frontend:${IMAGE_TAG:-latest}
+    image: ${CI_REGISTRY:-192.168.1.54:5050}/jiangjingcsu/yuemo-mall/yuemo-mall-frontend:${IMAGE_TAG:-latest}
     container_name: frontend-server
     ports:
       - "8080:80"
