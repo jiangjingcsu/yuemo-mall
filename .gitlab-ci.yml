@@ -8,8 +8,8 @@ variables:
   DEPLOY_HOST: "${DEPLOY_HOST:-192.168.1.55}"
   DEPLOY_USER: "${DEPLOY_USER:-root}"
   DEPLOY_PATH: "/opt/software/yuemo-mall"
-  BACKEND_IMAGE: "192.168.1.55:5000/yuemo-mall-backend"
-  FRONTEND_IMAGE: "192.168.1.55:5000/yuemo-mall-frontend"
+  BACKEND_IMAGE: "192.168.1.53:5000/yuemo-mall-backend"
+  FRONTEND_IMAGE: "192.168.1.53:5000/yuemo-mall-frontend"
   DOCKER_HOST: "unix:///var/run/docker.sock"
   SSHPASS: "${SSH_PASSWORD}"
 
@@ -106,14 +106,13 @@ docker:frontend:
   image: docker:27
   stage: docker
   tags: [yuemo]
-  timeout: 10 minutes
+  timeout: 15 minutes
   needs:
     - build:frontend
   before_script:
     - until docker info > /dev/null 2>&1; do echo "waiting for docker..."; sleep 2; done
   script:
-    - cp -r yuemo-frontend/dist yuemo-frontend/docker/
-    - cd yuemo-frontend/docker
+    - cd yuemo-frontend
     - >
       docker build
       --label "commit=${CI_COMMIT_SHA}"
@@ -121,6 +120,7 @@ docker:frontend:
       --label "job=${CI_JOB_ID}"
       -t ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
       -t ${FRONTEND_IMAGE}:latest
+      -f docker/Dockerfile
       .
     - docker push ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
     - docker push ${FRONTEND_IMAGE}:latest
@@ -160,8 +160,9 @@ deploy:backend:
         set -e
         cd ${DEPLOY_PATH}/yuemo-backend/docker
         tar xzf ${DEPLOY_PATH}/nginx-config.tar.gz -C ${DEPLOY_PATH}/yuemo-backend/docker/
+        docker network create backend-net 2>/dev/null || true
         echo 'Stopping conflicting containers if any...'
-        for c in yuemo-mall-1 yuemo-mall-2 yuemo-nginx; do
+        for c in yuemo-mall-1 yuemo-mall-2; do
           docker stop \$c 2>/dev/null && docker rm \$c 2>/dev/null || true
         done
         docker pull ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
@@ -213,7 +214,7 @@ deploy:frontend:
         docker stop frontend-server 2>/dev/null || true
         docker rm frontend-server 2>/dev/null || true
         docker pull ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
-        docker network create yuemo-net 2>/dev/null || true
+        docker network create frontend-net 2>/dev/null || true
         cd ${DEPLOY_PATH}/yuemo-frontend/docker
         IMAGE_TAG=${CI_COMMIT_SHORT_SHA} docker compose up -d --remove-orphans
         echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.frontend-version

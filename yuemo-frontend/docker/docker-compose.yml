@@ -1,13 +1,13 @@
 services:
   frontend-server:
-    image: 192.168.1.55:5000/yuemo-mall-frontend:${IMAGE_TAG:-latest}
+    image: 192.168.1.53:5000/yuemo-mall-frontend:${IMAGE_TAG:-latest}
     container_name: frontend-server
     ports:
       - "8080:80"
     restart: always
     networks:
-      - yuemo-net
+      - frontend-net
 
 networks:
-  yuemo-net:
+  frontend-net:
     external: true
