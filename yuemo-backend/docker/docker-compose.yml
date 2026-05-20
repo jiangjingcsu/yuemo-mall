@@ -1,6 +1,6 @@
 services:
   yuemo-mall-1:
-    image: ${CI_REGISTRY:-192.168.1.54:5050}/jiangjingcsu/yuemo-mall/yuemo-mall-backend:${IMAGE_TAG:-latest}
+    image: 192.168.1.53:5000/yuemo-mall-backend:${IMAGE_TAG:-latest}
     container_name: yuemo-mall-1
     environment:
       - DB_HOST=${DB_HOST:-192.168.1.56}
@@ -19,7 +19,7 @@ services:
       - backend-net
 
   yuemo-mall-2:
-    image: ${CI_REGISTRY:-192.168.1.54:5050}/jiangjingcsu/yuemo-mall/yuemo-mall-backend:${IMAGE_TAG:-latest}
+    image: 192.168.1.53:5000/yuemo-mall-backend:${IMAGE_TAG:-latest}
     container_name: yuemo-mall-2
     environment:
       - DB_HOST=${DB_HOST:-192.168.1.56}
