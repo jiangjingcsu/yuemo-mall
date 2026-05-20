@@ -23,7 +23,8 @@
       "Bash(scp *)",
       "Bash(curl.exe *)",
       "Bash(Get-ChildItem *)",
-      "Bash(Select-Object *)"
+      "Bash(Select-Object *)",
+      "Bash(python3 *)"
     ]
   }
 }
