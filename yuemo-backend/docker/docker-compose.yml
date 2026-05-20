@@ -13,7 +13,7 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-jiangjing}
       - ROCKETMQ_NS=${ROCKETMQ_NS:-192.168.1.56:9876}
       - SENTINEL_DASHBOARD=${SENTINEL_DASHBOARD:-192.168.1.56:8080}
-      - JWT_SECRET=${JWT_SECRET:-yuemo-mall-jwt-secret-2024}
+      - JWT_SECRET=${JWT_SECRET:-yuemo-mall-jwt-secret-key-2024-must-be-at-least-256bits}
     volumes:
       - ./logs/yuemo-mall-1:/app/logs
     ports:
@@ -34,7 +34,7 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-jiangjing}
       - ROCKETMQ_NS=${ROCKETMQ_NS:-192.168.1.56:9876}
       - SENTINEL_DASHBOARD=${SENTINEL_DASHBOARD:-192.168.1.56:8080}
-      - JWT_SECRET=${JWT_SECRET:-yuemo-mall-jwt-secret-2024}
+      - JWT_SECRET=${JWT_SECRET:-yuemo-mall-jwt-secret-key-2024-must-be-at-least-256bits}
     volumes:
       - ./logs/yuemo-mall-2:/app/logs
     ports:

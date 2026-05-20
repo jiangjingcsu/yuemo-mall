@@ -20,7 +20,7 @@ import java.util.Date;
 @ConfigurationProperties(prefix = "jwt")
 public class JwtTokenProvider {
 
-    private String secret = "yuemo-mall-default-secret-key-min-256-bits-long!!";
+    private String secret = "yuemo-mall-jwt-secret-key-2024-must-be-at-least-256bits";
     private long accessTokenExpiration = 1800; // 30分钟
     private long refreshTokenExpiration = 604800; // 7天
 

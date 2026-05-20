@@ -29,7 +29,10 @@
       "PowerShell(Get-Command *)",
       "Bash(choco install *)",
       "Bash(winget install *)",
-      "PowerShell(sshpass *)"
+      "PowerShell(sshpass *)",
+      "PowerShell(& \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\xhcoding.sshpass-win32_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\sshpass.exe\" -p 'jiangjing' ssh -o StrictHostKeyChecking=no root@192.168.1.54 \"echo 'connected'\")",
+      "PowerShell(& \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\xhcoding.sshpass-win32_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\sshpass.exe\" -p 'jiangjing' ssh -o StrictHostKeyChecking=no root@192.168.1.54 \"echo '=== GitLab Service Status ===' && gitlab-ctl status 2>&1 && echo '' && echo '=== Docker Status ===' && docker info --format '{{.ServerVersion}}' 2>&1 && echo '' && echo '=== GitLab Runner Status ===' && gitlab-runner status 2>&1 || systemctl status gitlab-runner 2>&1 | head -20\")",
+      "PowerShell(& \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\xhcoding.sshpass-win32_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\sshpass.exe\" -p 'jiangjing' ssh -o StrictHostKeyChecking=no root@192.168.1.54 \"echo '=== Docker Containers ===' && docker ps -a --format 'table {{.Names}}\\\\t{{.Image}}\\\\t{{.Status}}\\\\t{{.Ports}}' 2>&1 && echo '' && echo '=== GitLab Docker Logs \\(last 30 lines\\) ===' && docker logs gitlab --tail 30 2>&1\")"
     ]
   }
 }
