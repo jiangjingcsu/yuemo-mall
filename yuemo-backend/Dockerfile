@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jre-alpine
+FROM 192.168.1.53/base-images/eclipse-temurin:17-jre-alpine
 
 LABEL maintainer="yuemo"
 LABEL description="月魔商城 — Spring Boot 3.2 单体应用 + JDK 17"

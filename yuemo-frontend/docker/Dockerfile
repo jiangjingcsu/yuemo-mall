@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM 192.168.1.53/base-images/node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN npm ci --prefer-offline --no-audit --progress=false || npm install --prefer-
 COPY . .
 RUN npm run build
 
-FROM nginx:stable-alpine
+FROM 192.168.1.53/base-images/nginx:stable-alpine
 
 LABEL maintainer="yuemo"
 LABEL description="月魔商城 Frontend — Nginx SPA static server"
