@@ -61,3 +61,6 @@ logs/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Local test scripts
+fortest/
