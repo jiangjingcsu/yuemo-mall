@@ -8,9 +8,10 @@ variables:
   DEPLOY_HOST: "${DEPLOY_HOST:-192.168.1.55}"
   DEPLOY_USER: "${DEPLOY_USER:-root}"
   DEPLOY_PATH: "/opt/software/yuemo-mall"
-  REGISTRY: "192.168.1.53:5000"
-  BACKEND_IMAGE: "${REGISTRY}/yuemo-mall-backend"
-  FRONTEND_IMAGE: "${REGISTRY}/yuemo-mall-frontend"
+  HARBOR_REGISTRY: "192.168.1.53"
+  HARBOR_PROJECT: "yuemo-mall"
+  BACKEND_IMAGE: "${HARBOR_REGISTRY}/${HARBOR_PROJECT}/backend"
+  FRONTEND_IMAGE: "${HARBOR_REGISTRY}/${HARBOR_PROJECT}/frontend"
   DOCKER_HOST: "unix:///var/run/docker.sock"
   SSHPASS: "${SSH_PASSWORD}"
 
@@ -77,6 +78,7 @@ docker:backend:
     - build:backend
   before_script:
     - until docker info > /dev/null 2>&1; do echo "waiting for docker..."; sleep 2; done
+    - echo "$HARBOR_PASSWORD" | docker login $HARBOR_REGISTRY -u "$HARBOR_USERNAME" --password-stdin
   script:
     - cd yuemo-backend
     - >
@@ -112,6 +114,7 @@ docker:frontend:
     - build:frontend
   before_script:
     - until docker info > /dev/null 2>&1; do echo "waiting for docker..."; sleep 2; done
+    - echo "$HARBOR_PASSWORD" | docker login $HARBOR_REGISTRY -u "$HARBOR_USERNAME" --password-stdin
   script:
     - cd yuemo-frontend
     - >
@@ -164,6 +167,7 @@ deploy:backend:
         for c in yuemo-mall-1 yuemo-mall-2; do
           docker stop \$c 2>/dev/null && docker rm \$c 2>/dev/null || true
         done
+        echo '${HARBOR_PASSWORD}' | docker login ${HARBOR_REGISTRY} -u '${HARBOR_USERNAME}' --password-stdin
         docker pull ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
         IMAGE_TAG=${CI_COMMIT_SHORT_SHA} docker compose up -d --remove-orphans
         echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.backend-version
@@ -212,6 +216,7 @@ deploy:frontend:
         set -e
         docker stop frontend-server 2>/dev/null || true
         docker rm frontend-server 2>/dev/null || true
+        echo '${HARBOR_PASSWORD}' | docker login ${HARBOR_REGISTRY} -u '${HARBOR_USERNAME}' --password-stdin
         docker pull ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
         docker network create frontend-net 2>/dev/null || true
         cd ${DEPLOY_PATH}/yuemo-frontend/docker
