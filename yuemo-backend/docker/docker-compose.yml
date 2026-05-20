@@ -1,6 +1,6 @@
 services:
   yuemo-mall-1:
-    image: yuemo-mall:latest
+    image: 192.168.1.55:5000/yuemo-mall-backend:${IMAGE_TAG:-latest}
     container_name: yuemo-mall-1
     environment:
       - DB_HOST=${DB_HOST:-192.168.1.45}
@@ -19,7 +19,7 @@ services:
       - yuemo-net
 
   yuemo-mall-2:
-    image: yuemo-mall:latest
+    image: 192.168.1.55:5000/yuemo-mall-backend:${IMAGE_TAG:-latest}
     container_name: yuemo-mall-2
     environment:
       - DB_HOST=${DB_HOST:-192.168.1.45}

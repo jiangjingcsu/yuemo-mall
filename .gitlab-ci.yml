@@ -8,8 +8,8 @@ variables:
   DEPLOY_HOST: "${DEPLOY_HOST:-192.168.1.55}"
   DEPLOY_USER: "${DEPLOY_USER:-root}"
   DEPLOY_PATH: "/opt/software/yuemo-mall"
-  BACKEND_IMAGE: "yuemo-mall-backend"
-  FRONTEND_IMAGE: "yuemo-mall-frontend"
+  BACKEND_IMAGE: "192.168.1.55:5000/yuemo-mall-backend"
+  FRONTEND_IMAGE: "192.168.1.55:5000/yuemo-mall-frontend"
   DOCKER_HOST: "unix:///var/run/docker.sock"
   SSHPASS: "${SSH_PASSWORD}"
 
@@ -86,10 +86,10 @@ docker:backend:
       -t ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
       -t ${BACKEND_IMAGE}:latest
       .
-    - docker save ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} | gzip > ../backend.tar.gz
+    - docker push ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
+    - docker push ${BACKEND_IMAGE}:latest
   artifacts:
     paths:
-      - backend.tar.gz
       - yuemo-backend/docker/docker-compose.yml
       - yuemo-backend/docker/nginx/
     expire_in: 1 hour
@@ -122,10 +122,10 @@ docker:frontend:
       -t ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
       -t ${FRONTEND_IMAGE}:latest
       .
-    - docker save ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA} | gzip > ../../frontend.tar.gz
+    - docker push ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
+    - docker push ${FRONTEND_IMAGE}:latest
   artifacts:
     paths:
-      - frontend.tar.gz
       - yuemo-frontend/docker/docker-compose.yml
     expire_in: 1 hour
   rules:
@@ -150,24 +150,22 @@ deploy:backend:
     - '[ -z "$DB_PASS" ] && echo "ERROR: DB_PASS not set in GitLab CI/CD Variables" && exit 1 || true'
     - '[ -z "$JWT_SECRET" ] && echo "ERROR: JWT_SECRET not set in GitLab CI/CD Variables" && exit 1 || true'
   script:
-    - echo "=== Transfer artifacts to ${DEPLOY_HOST} ==="
-    - sshpass -e scp -o StrictHostKeyChecking=no backend.tar.gz ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/backend.tar.gz
+    - echo "=== Transfer configs to ${DEPLOY_HOST} ==="
     - sshpass -e scp -o StrictHostKeyChecking=no yuemo-backend/docker/docker-compose.yml ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-backend/docker/docker-compose.yml
     - tar czf nginx-config.tar.gz -C yuemo-backend/docker nginx/
     - sshpass -e scp -o StrictHostKeyChecking=no nginx-config.tar.gz ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/nginx-config.tar.gz
     - |
-      echo "=== Load image and deploy on ${DEPLOY_HOST} ==="
+      echo "=== Pull image and deploy on ${DEPLOY_HOST} ==="
       sshpass -e ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
         set -e
         cd ${DEPLOY_PATH}/yuemo-backend/docker
+        tar xzf ${DEPLOY_PATH}/nginx-config.tar.gz -C ${DEPLOY_PATH}/yuemo-backend/docker/
         echo 'Stopping conflicting containers if any...'
         for c in yuemo-mall-1 yuemo-mall-2 yuemo-nginx; do
           docker stop \$c 2>/dev/null && docker rm \$c 2>/dev/null || true
         done
-        tar xzf ${DEPLOY_PATH}/nginx-config.tar.gz -C ${DEPLOY_PATH}/yuemo-backend/docker/
-        gunzip -c ${DEPLOY_PATH}/backend.tar.gz | docker load
-        docker tag ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall:latest
-        DB_PASS='${DB_PASS}' JWT_SECRET='${JWT_SECRET}' REDIS_PASSWORD='${REDIS_PASSWORD:-}' docker compose up -d --pull never --remove-orphans
+        docker pull ${BACKEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
+        IMAGE_TAG=${CI_COMMIT_SHORT_SHA} DB_PASS='${DB_PASS}' JWT_SECRET='${JWT_SECRET}' REDIS_PASSWORD='${REDIS_PASSWORD:-}' docker compose up -d --remove-orphans
         echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.backend-version
         docker image prune -f
       "
@@ -206,20 +204,18 @@ deploy:frontend:
     - apk add --no-cache openssh-client sshpass
     - '[ -z "$SSH_PASSWORD" ] && echo "ERROR: SSH_PASSWORD not set in GitLab CI/CD Variables" && exit 1 || true'
   script:
-    - echo "=== Transfer artifacts to ${DEPLOY_HOST} ==="
-    - sshpass -e scp -o StrictHostKeyChecking=no frontend.tar.gz ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/frontend.tar.gz
+    - echo "=== Transfer configs to ${DEPLOY_HOST} ==="
     - sshpass -e scp -o StrictHostKeyChecking=no yuemo-frontend/docker/docker-compose.yml ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/yuemo-frontend/docker/docker-compose.yml
-    - echo "=== Load image and deploy on ${DEPLOY_HOST} ==="
+    - echo "=== Pull image and deploy on ${DEPLOY_HOST} ==="
     - >
       sshpass -e ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
         set -e
-        docker stop nginx-frontend 2>/dev/null || true
-        docker rm nginx-frontend 2>/dev/null || true
-        gunzip -c ${DEPLOY_PATH}/frontend.tar.gz | docker load
-        docker tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA} yuemo-mall-frontend:latest
+        docker stop frontend-server 2>/dev/null || true
+        docker rm frontend-server 2>/dev/null || true
+        docker pull ${FRONTEND_IMAGE}:${CI_COMMIT_SHORT_SHA}
         docker network create yuemo-net 2>/dev/null || true
         cd ${DEPLOY_PATH}/yuemo-frontend/docker
-        docker compose up -d --pull never --remove-orphans
+        IMAGE_TAG=${CI_COMMIT_SHORT_SHA} docker compose up -d --remove-orphans
         echo '${CI_COMMIT_SHA}  \$(date -u +%Y-%m-%dT%H:%M:%SZ)  ${CI_COMMIT_SHORT_SHA}' > ${DEPLOY_PATH}/.frontend-version
         docker image prune -f
       "

@@ -1,11 +1,19 @@
-FROM nginx:1.24-alpine
+FROM node:20-alpine
 
 LABEL maintainer="yuemo"
+LABEL description="月魔商城 Frontend — Vite SPA static server"
 
-RUN rm -rf /usr/share/nginx/html/*
+RUN npm install -g serve@14
 
-COPY dist/ /usr/share/nginx/html/
+WORKDIR /app
+
+COPY dist/ /app/
+
+USER node
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:80/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+CMD ["serve", "-s", "/app", "-l", "80", "--no-clipboard"]

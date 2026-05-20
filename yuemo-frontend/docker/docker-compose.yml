@@ -1,7 +1,7 @@
 services:
-  nginx-frontend:
-    image: yuemo-mall-frontend:latest
-    container_name: nginx-frontend
+  frontend-server:
+    image: 192.168.1.55:5000/yuemo-mall-frontend:${IMAGE_TAG:-latest}
+    container_name: frontend-server
     ports:
       - "8080:80"
     restart: always
