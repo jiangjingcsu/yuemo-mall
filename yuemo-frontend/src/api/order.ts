@@ -24,9 +24,16 @@ export interface OrderPage {
   current: number;
 }
 
+export interface CreateOrderParams {
+  addressId: number;
+  items: { productId: number; skuId?: number; quantity: number }[];
+  remark?: string;
+  couponId?: number;
+}
+
 export const orderApi = {
-  create: (params: { addressId: number; items: { productId: number; quantity: number }[] }) =>
-    request.post('/order/create', params),
+  create: (params: CreateOrderParams) =>
+    request.post<Order>('/order/create', params),
   getList: (params: { page: number; size: number; status?: number }) =>
     request.get<OrderPage>('/order/list', { params }),
   getDetail: (id: number) => request.get<Order>(`/order/${id}`),

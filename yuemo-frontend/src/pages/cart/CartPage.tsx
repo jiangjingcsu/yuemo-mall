@@ -99,7 +99,7 @@ export default function CartPage() {
               </span>
             </span>
             <Button type="primary" size="large" disabled={selectedItems.length === 0}
-                    onClick={() => message.info('请前往结算（功能开发中）')}>
+                    onClick={() => navigate('/checkout')}>
               去结算
             </Button>
           </div>

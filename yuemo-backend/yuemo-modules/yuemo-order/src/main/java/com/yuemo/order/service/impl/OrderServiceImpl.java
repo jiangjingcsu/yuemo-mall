@@ -3,6 +3,7 @@ package com.yuemo.order.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yuemo.cart.service.CartService;
 import com.yuemo.common.core.exception.BusinessException;
 import com.yuemo.common.core.response.ResultCode;
 import com.yuemo.common.core.utils.IdGenerator;
@@ -15,7 +16,9 @@ import com.yuemo.order.mapper.OrderLogMapper;
 import com.yuemo.order.mapper.OrderMapper;
 import com.yuemo.order.service.OrderService;
 import com.yuemo.product.entity.Product;
+import com.yuemo.product.entity.ProductSku;
 import com.yuemo.product.service.ProductService;
+import com.yuemo.product.service.SkuService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
@@ -42,38 +45,45 @@ public class OrderServiceImpl implements OrderService {
     private final OrderLogMapper orderLogMapper;
     private final RocketMQTemplate rocketMQTemplate;
     private final ProductService productService;
+    private final SkuService skuService;
+    private final CartService cartService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Order createOrder(Long userId, CreateOrderDTO dto) {
-        // 生成订单号
         String orderNo = generateOrderNo(userId);
 
-        // 构建订单商品列表
         List<OrderItem> items = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for (CreateOrderDTO.OrderItemDTO itemDTO : dto.getItems()) {
             Product product = productService.getProductById(itemDTO.getProductId());
 
+            BigDecimal price = product.getPrice();
+            if (itemDTO.getSkuId() != null) {
+                ProductSku sku = skuService.getSkuById(itemDTO.getSkuId());
+                if (sku != null && sku.getPrice() != null) {
+                    price = sku.getPrice();
+                }
+            }
+
             OrderItem item = new OrderItem();
             item.setProductId(itemDTO.getProductId());
             item.setQuantity(itemDTO.getQuantity());
-            item.setPrice(product.getPrice());
-            item.setTotalAmount(product.getPrice().multiply(BigDecimal.valueOf(itemDTO.getQuantity())));
+            item.setPrice(price);
+            item.setTotalAmount(price.multiply(BigDecimal.valueOf(itemDTO.getQuantity())));
             item.setProductName(product.getName());
             item.setProductImage(product.getMainImage());
             items.add(item);
             totalAmount = totalAmount.add(item.getTotalAmount());
         }
 
-        // 创建订单
         Order order = new Order();
         order.setOrderNo(orderNo);
         order.setUserId(userId);
         order.setTotalAmount(totalAmount);
         order.setPayAmount(totalAmount);
-        order.setStatus(0); // 待支付
+        order.setStatus(0);
         order.setAddressId(dto.getAddressId());
         order.setRemark(dto.getRemark());
         orderMapper.insert(order);
@@ -83,7 +93,6 @@ public class OrderServiceImpl implements OrderService {
             orderItemMapper.insert(item);
         }
 
-        // 发送预占库存事务消息
         Map<Long, Integer> stockMap = dto.getItems().stream()
                 .collect(Collectors.toMap(CreateOrderDTO.OrderItemDTO::getProductId, CreateOrderDTO.OrderItemDTO::getQuantity));
         Message<Map<Long, Integer>> message = MessageBuilder
@@ -91,6 +100,12 @@ public class OrderServiceImpl implements OrderService {
                 .setHeader("orderId", order.getId())
                 .build();
         rocketMQTemplate.sendMessageInTransaction("order-stock-preoccupy", message, order);
+
+        try {
+            cartService.clearSelected(userId);
+        } catch (Exception e) {
+            log.warn("清空购物车已选商品失败，不影响订单创建: userId={}", userId, e);
+        }
 
         return order;
     }
@@ -129,7 +144,6 @@ public class OrderServiceImpl implements OrderService {
         orderMapper.updateById(order);
         saveOrderLog(orderId, fromStatus, 4, "user:" + userId, "取消订单");
 
-        // 查询订单明细，构建库存释放信息
         List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
                 .eq(OrderItem::getOrderId, orderId));
         Map<Long, Integer> stockMap = items.stream()

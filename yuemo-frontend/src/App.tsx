@@ -6,6 +6,7 @@ import ProductList from './pages/product/ProductList';
 import ProductDetail from './pages/product/ProductDetail';
 import OrderList from './pages/order/OrderList';
 import OrderDetail from './pages/order/OrderDetail';
+import CheckoutPage from './pages/order/CheckoutPage';
 import CartPage from './pages/cart/CartPage';
 import CouponList from './pages/coupon/CouponList';
 import UserCenter from './pages/user/UserCenter';
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
         <Route path="payment/:orderId" element={<PrivateRoute><PaymentPage /></PrivateRoute>} />
         <Route path="cart" element={<PrivateRoute><CartPage /></PrivateRoute>} />
+        <Route path="checkout" element={<PrivateRoute><CheckoutPage /></PrivateRoute>} />
         <Route path="coupons" element={<CouponList />} />
         <Route path="profile" element={<PrivateRoute><UserCenter /></PrivateRoute>} />
         <Route path="address" element={<PrivateRoute><AddressPage /></PrivateRoute>} />

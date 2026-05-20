@@ -105,11 +105,12 @@ public class CartServiceImpl implements CartService {
 
     @Override
     public void removeItem(Long userId, Long itemId) {
-        CartItem item = cartItemMapper.selectById(itemId);
-        if (item == null || !item.getUserId().equals(userId)) {
+        int rows = cartItemMapper.delete(new LambdaQueryWrapper<CartItem>()
+                .eq(CartItem::getId, itemId)
+                .eq(CartItem::getUserId, userId));
+        if (rows == 0) {
             throw new BusinessException(ResultCode.CART_ITEM_NOT_FOUND);
         }
-        cartItemMapper.deleteById(itemId);
         redisTemplate.delete("cart:user:" + userId);
     }
 

@@ -19,7 +19,10 @@ public class CreateOrderDTO {
 
     @Data
     public static class OrderItemDTO {
-        @NotNull private Long productId;
-        @NotNull private Integer quantity;
+        @NotNull
+        private Long productId;
+        private Long skuId;
+        @NotNull
+        private Integer quantity;
     }
 }

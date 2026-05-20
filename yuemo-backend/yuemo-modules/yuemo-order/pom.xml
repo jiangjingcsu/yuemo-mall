@@ -28,6 +28,11 @@
         </dependency>
         <dependency>
             <groupId>com.yuemo</groupId>
+            <artifactId>yuemo-cart</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yuemo</groupId>
             <artifactId>common-security</artifactId>
             <version>${project.version}</version>
         </dependency>

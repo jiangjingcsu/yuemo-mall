@@ -67,6 +67,11 @@ logging:
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
 
 springdoc:
   swagger-ui:
