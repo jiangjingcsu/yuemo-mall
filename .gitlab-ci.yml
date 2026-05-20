@@ -8,8 +8,9 @@ variables:
   DEPLOY_HOST: "${DEPLOY_HOST:-192.168.1.55}"
   DEPLOY_USER: "${DEPLOY_USER:-root}"
   DEPLOY_PATH: "/opt/software/yuemo-mall"
-  BACKEND_IMAGE: "yuemo-mall-backend"
-  FRONTEND_IMAGE: "yuemo-mall-frontend"
+  REGISTRY: "192.168.1.53:5000"
+  BACKEND_IMAGE: "${REGISTRY}/yuemo-mall-backend"
+  FRONTEND_IMAGE: "${REGISTRY}/yuemo-mall-frontend"
   DOCKER_HOST: "unix:///var/run/docker.sock"
   SSHPASS: "${SSH_PASSWORD}"
 
