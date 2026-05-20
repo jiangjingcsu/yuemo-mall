@@ -8,10 +8,10 @@ RUN npm ci --prefer-offline --no-audit --progress=false || npm install --prefer-
 COPY . .
 RUN npm run build
 
-FROM nginx:1.29.8-alpine
+FROM nginx:stable-alpine
 
 LABEL maintainer="yuemo"
-LABEL description="御魔商城 Frontend — Nginx SPA static server"
+LABEL description="月魔商城 Frontend — Nginx SPA static server"
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
