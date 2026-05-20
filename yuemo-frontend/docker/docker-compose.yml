@@ -1,3 +1,5 @@
+name: yuemo-frontend
+
 services:
   frontend-server:
     image: 192.168.1.53/yuemo-mall/frontend:${IMAGE_TAG:-latest}
