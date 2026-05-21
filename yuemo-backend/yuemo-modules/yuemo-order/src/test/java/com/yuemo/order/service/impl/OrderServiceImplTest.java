@@ -3,6 +3,7 @@ package com.yuemo.order.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yuemo.cart.service.CartService;
 import com.yuemo.common.core.exception.BusinessException;
 import com.yuemo.order.dto.CreateOrderDTO;
 import com.yuemo.order.entity.Order;
@@ -12,6 +13,7 @@ import com.yuemo.order.mapper.OrderLogMapper;
 import com.yuemo.order.mapper.OrderMapper;
 import com.yuemo.product.entity.Product;
 import com.yuemo.product.service.ProductService;
+import com.yuemo.product.service.SkuService;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,7 +31,6 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,12 +42,14 @@ class OrderServiceImplTest {
     @Mock private OrderLogMapper orderLogMapper;
     @Mock private RocketMQTemplate rocketMQTemplate;
     @Mock private ProductService productService;
+    @Mock private SkuService skuService;
+    @Mock private CartService cartService;
 
     private OrderServiceImpl orderService;
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderServiceImpl(orderMapper, orderItemMapper, orderLogMapper, rocketMQTemplate, productService);
+        orderService = new OrderServiceImpl(orderMapper, orderItemMapper, orderLogMapper, rocketMQTemplate, productService, skuService, cartService);
     }
 
     @Nested
