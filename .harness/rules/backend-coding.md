@@ -1,6 +1,7 @@
 # 后端编码规范（Java 17 / Spring Boot 3.2 / MyBatis-Plus）
 
 > 基于《阿里巴巴Java开发手册》与项目实际代码模式提炼，新增代码必须遵守。
+> 实操技能：`.harness/skills/api-design/SKILL.md` `.harness/skills/sql-review/SKILL.md` `.harness/skills/code-verify/SKILL.md`
 
 ---
 
@@ -15,11 +16,11 @@
 | 抽象类 | Base/Xxx前缀 | `BaseEntity` | `AbstractEntity` |
 | 异常类 | XxxException | `BusinessException` | `BizError` |
 | 测试类 | 被测类+Test | `ProductServiceTest` | `ProductTest` |
-| Service | I+XxxService | `IProductService` | `ProductServiceImpl` |
+| Service | XxxService | `ProductService` | `ProductServiceImpl` |
 | ServiceImpl | XxxServiceImpl | `ProductServiceImpl` | `ProductService` |
 | Mapper | XxxMapper | `ProductMapper` | `ProductDao` |
 | boolean字段 | is+Xxx | `isDeleted` | `deleted` |
-| DTO | XxxRequest/XxxCriteria | `CreateProductRequest` | `ProductDTO` |
+| DTO | XxxRequest/XxxCriteria/XxxDTO | `CreateProductRequest`/`CreateOrderDTO` | `ProductData` |
 | VO | XxxVO | `ProductDetailVO` | `ProductView` |
 
 - 禁止拼音与英文混用（`daZhePromotion` ❌ → `discountPromotion` ✅）
@@ -30,19 +31,18 @@
 
 ## 2. 分层架构
 
-```
-Controller → Service(接口) → ServiceImpl → Mapper → DB
-     ↕            ↕               ↕
-  DTO/VO       Result<T>      Entity(BaseEntity)
-```
+> 分层职责、禁止事项、模块间调用规则等架构约束的权威定义见 `.harness/rules/architecture-governance.md`。
+> 本节仅列出每层对应的项目编码约定，不重复架构规则。
 
-| 层 | 职责 | 规范 |
-|---|---|---|
-| Controller | 参数接收、调用Service、返回Result | 不写业务逻辑 |
-| Service接口 | `IXXXService extends IService<Entity>` | MyBatis-Plus模式 |
-| ServiceImpl | 业务逻辑 | `@RequiredArgsConstructor`注入 |
-| Mapper | `extends BaseMapper<Entity>` | 复杂查询写XML |
-| Entity | 继承`BaseEntity` | `@Data`+`@TableName` |
+| 层 | 项目编码约定（本文件细化） |
+|---|---|
+| Controller | `@RequiredArgsConstructor` 注入 Service；方法返回 `Result<T>`；参数用 `@Valid` 校验；用户身份用 `@RequestAttribute("userId") Long userId` |
+| Service 接口 | `XxxService`（自定义业务接口，不继承 `IService`） |
+| ServiceImpl | `@Service` + `@RequiredArgsConstructor` + `implements XxxService`（不继承 MyBatis-Plus `ServiceImpl`）；`@Transactional(rollbackFor = Exception.class)` |
+| Mapper | `@Mapper` + `extends BaseMapper<Entity>`；复杂 SQL 写 XML；查询用 `LambdaQueryWrapper` |
+| Entity | `@Data` + `@EqualsAndHashCode(callSuper = true)` + `@TableName`；继承 `BaseEntity`（`@Getter` + `@Setter` + `abstract`） |
+
+> **跨模块调用规则摘要**（详见`architecture-governance.md`）：禁止跨模块直接调Mapper；禁止Controller跨模块调Service；模块间通过Service接口或MQ通信
 
 ---
 
@@ -81,6 +81,16 @@ public record CreateProductRequest(
 }
 ```
 
+VO使用`record`并提供`static from(Entity)`工厂方法：
+
+```java
+public record OrderVO(Long id, String orderNo, BigDecimal totalAmount, Integer status) {
+    public static OrderVO from(Order order) {
+        return new OrderVO(order.getId(), order.getOrderNo(), order.getTotalAmount(), order.getStatus());
+    }
+}
+```
+
 ---
 
 ## 5. Entity 规范
@@ -88,8 +98,10 @@ public record CreateProductRequest(
 | 项目 | 规范 |
 |---|---|
 | 继承 | 必须继承`BaseEntity`（提供`id`/`createTime`/`updateTime`/`deleted`） |
-| 注解 | `@Data` + `@EqualsAndHashCode(callSuper = true)` + `@TableName` |
-| 删除 | 逻辑删除（`deleted=true`），禁止物理删除 |
+| 注解 | 子类：`@Data` + `@EqualsAndHashCode(callSuper = true)` + `@TableName`；BaseEntity：`@Getter` + `@Setter` + `abstract` |
+| 关键注解 | `@TableId(type = IdType.AUTO)`主键自增；`@JsonSerialize(using = ToStringSerializer.class)` Long防精度丢失；`@TableLogic`逻辑删除 |
+| 删除 | 逻辑删除（`@TableLogic`，deleted=1表示已删除，默认0），禁止物理删除 |
+| 领域行为 | Entity必须封装领域行为方法（充血模型），状态变更通过Entity方法操作，禁止在ServiceImpl中直接set状态字段。示例：`Order.pay()`、`Payment.markSuccess()` |
 | 时间字段 | 由`AutoFillMetaObjectHandler`自动填充，不手动设置 |
 | 表名 | `yu_`前缀+下划线（`yu_product`/`yu_order_item`） |
 | 字段名 | DB下划线（`category_id`），Entity驼峰（`categoryId`） |
@@ -108,8 +120,10 @@ public class Product extends BaseEntity { private String name; private Long cate
 
 ```java
 productMapper.selectList(new LambdaQueryWrapper<Product>()
-    .eq(Product::getDeleted, false).eq(Product::getStatus, 1).orderByDesc(Product::getSales));
+    .eq(Product::getStatus, 1).orderByDesc(Product::getSales));
 ```
+
+> `@TableLogic`自动过滤已删除记录，查询时无需手动添加`.eq(Product::getDeleted, false)`。
 
 ---
 
@@ -119,11 +133,13 @@ productMapper.selectList(new LambdaQueryWrapper<Product>()
 
 ```java
 @GetMapping("/list")
-public Result<IPage<Coupon>> list(@RequestParam(defaultValue = "1") Integer page,
-                                   @RequestParam(defaultValue = "10") Integer size) {
-    return Result.success(couponService.pageCoupons(page, size));
+public Result<PageResult<CouponVO>> list(@RequestParam(defaultValue = "1") Integer page,
+                                          @RequestParam(defaultValue = "10") Integer size) {
+    return Result.success(PageResult.from(couponService.pageCoupons(page, size)));
 }
 ```
+
+分页响应统一使用`Result<PageResult<T>>`，通过`PageResult.from(IPage)`转换，禁止直接返回`IPage`。
 
 **错误码分段**（在`ResultCode`枚举中添加，禁止硬编码）：
 
@@ -155,17 +171,20 @@ public void updateProduct(Long id, UpdateProductRequest request) { ... }
 ```
 
 - value名驼峰，与业务对应；key用SpEL（`#id`）；写操作必须清缓存；TTL在yml配置（默认10分钟）
+- Redis Key命名规范：`yuemo:{module}:{business}:{id}`，如`yuemo:user:token:1001`、`yuemo:cart:1001`
 
 ---
 
 ## 10. 事务规范
 
 ```java
-@Transactional(rollbackFor = Exception.class)
+@Transactional(rollbackFor = Exception.class, timeout = 10)
 public void createProduct(CreateProductRequest request) { ... }
 ```
 
 - **必须**指定`rollbackFor = Exception.class`；事务加在Service层；只读查询不加；跨服务调用（MQ发送）不放在事务内
+- **必须**配置`timeout`：极短1-3s、常规5-10s、批量30-120s
+- 事务不跨模块，跨模块通过MQ事务消息；禁止大事务（超3张表需拆分）
 
 ---
 
@@ -214,6 +233,8 @@ public class OrderTimeoutTask {
 
 HTTP方法：`GET`查询 / `POST`创建 / `PUT`更新 / `DELETE`删除
 
+API文档注解（Knife4j）：Controller加`@Tag(name = "商品")`，方法加`@Operation(summary = "商品列表")`
+
 ---
 
 ## 14. 日志规范
@@ -241,10 +262,13 @@ public class JwtTokenProvider { private String secret; private long accessTokenE
 | 项目 | 规范 |
 |---|---|
 | 连接池 | HikariCP，最小空闲5，最大20 |
-| 迁移 | Flyway，脚本放`sql/`目录 |
+| 迁移 | Flyway，脚本放`yuemo-server/src/main/resources/db/migration/` |
 | 索引 | 高选择性列建索引，联合索引遵循最左前缀 |
 | 小数 | 禁止float/double，用`DECIMAL`（对应Java `BigDecimal`） |
 | 字符 | 统一`utf8mb4`，varchar长度按实际需要设 |
+| 时间 | 禁止`TIMESTAMP`（2038问题），用`DATETIME` |
+| 唯一键 | 唯一键必须含`deleted`字段，防止逻辑删除后唯一约束冲突 |
+| 并发安全 | 禁止`SELECT-then-INSERT/UPDATE`竞态，改用原子SQL（`WHERE stock >= quantity`）或乐观锁 |
 | 禁止 | 拼接动态SQL；存储过程；视图；触发器 |
 
 ---
@@ -352,23 +376,20 @@ class ProductServiceImplTest {
 
 ## 24. 禁止事项清单
 
-| # | 禁止项 |
-|---|---|
-| 1 | Controller中编写业务逻辑 |
-| 2 | `@Autowired`字段注入 |
-| 3 | DTO/VO使用普通类（必须用record） |
-| 4 | 字符串拼接SQL |
-| 5 | 物理删除数据 |
-| 6 | 吞掉异常（至少记日志） |
-| 7 | `@Transactional`不指定`rollbackFor` |
-| 8 | 硬编码错误码和错误消息 |
-| 9 | 日志中输出敏感信息 |
-| 10 | 日志中使用字符串拼接（用`{}`占位符） |
-| 11 | 返回Entity直接给前端 |
-| 12 | `Executors.newXxx()`创建线程池 |
-| 13 | `Date`/`SimpleDateFormat`（用`java.time`） |
-| 14 | MyBatis中用`${}`拼接用户输入 |
-| 15 | POJO/Entity使用基本类型（必须用包装类） |
-| 16 | 集合返回null（返回空集合） |
-| 17 | 存储过程/视图/触发器 |
-| 18 | float/double存金额（用BigDecimal） |
+> 各领域详细禁止事项见对应章节，本节不再重复汇总，以各章节定义为准。
+
+| 领域 | 对应章节 | 涉及禁止项 |
+|---|---|---|
+| 分层架构 | §2 | Controller无业务逻辑、返回Entity给前端 |
+| Lombok & 依赖注入 | §3 | @Autowired字段注入 |
+| Java Record | §4 | DTO/VO使用普通类 |
+| Entity 规范 | §5 | 基本类型、直接set状态字段 |
+| MyBatis-Plus | §6 | 字符串拼接SQL、${}拼接用户输入 |
+| 统一响应 & 错误码 | §7 | 硬编码错误码和错误消息 |
+| 异常处理 | §8 | 吞掉异常 |
+| 事务规范 | §10 | 不指定rollbackFor、不配置timeout |
+| 日志规范 | §14 | 输出敏感信息、字符串拼接 |
+| 数据库规范 | §16 | 物理删除、TIMESTAMP、float/double金额、唯一键不含deleted、SELECT-then-INSERT/UPDATE竞态、存储过程/视图/触发器 |
+| 集合规约 | §19 | 集合返回null |
+| 并发规约 | §20 | Executors.newXxx()创建线程池 |
+| 日期时间规约 | §22 | Date/SimpleDateFormat |

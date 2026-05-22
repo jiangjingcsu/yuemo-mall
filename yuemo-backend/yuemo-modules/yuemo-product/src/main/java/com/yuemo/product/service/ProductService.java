@@ -30,4 +30,6 @@ public interface ProductService {
     void updateSkuStock(Long skuId, Integer quantity);
 
     List<Category> getCategoryTree();
+
+    List<Product> batchGetProductsByIds(List<Long> ids);
 }

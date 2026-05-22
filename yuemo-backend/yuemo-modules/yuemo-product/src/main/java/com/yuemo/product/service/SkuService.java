@@ -14,4 +14,6 @@ public interface SkuService {
     void deleteSku(Long skuId);
     void updateSkuStock(Long skuId, Integer quantity);
     void syncProductAggregate(Long productId);
+
+    List<ProductSku> batchGetSkusByIds(List<Long> ids);
 }

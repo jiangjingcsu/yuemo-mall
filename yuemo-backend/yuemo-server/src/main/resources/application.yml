@@ -58,6 +58,19 @@ sentinel:
 server:
   port: ${SERVER_PORT:8080}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+  info:
+    env:
+      enabled: true
+
 logging:
   file:
     path: ${LOG_PATH:/app/logs}
@@ -83,11 +96,12 @@ yuemo:
     white-list:
       - /api/user/login
       - /api/user/register
+      - /api/payment/callback/**
       - /doc.html
       - /webjars/**
       - /v3/api-docs/**
-      - /actuator/**
-      - /api/payment/callback/**
+      - /actuator/health
+      - /actuator/info
     semi-white-list:
       - GET:/api/product/**
       - GET:/api/category/**

@@ -19,6 +19,18 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return token ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" replace />;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.role !== 'ADMIN') return <Navigate to="/" replace />;
+  } catch {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -35,7 +47,7 @@ export default function App() {
         <Route path="coupons" element={<CouponList />} />
         <Route path="profile" element={<PrivateRoute><UserCenter /></PrivateRoute>} />
         <Route path="address" element={<PrivateRoute><AddressPage /></PrivateRoute>} />
-        <Route path="admin" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
+        <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       </Route>
     </Routes>
   );

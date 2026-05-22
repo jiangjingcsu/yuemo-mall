@@ -1,6 +1,6 @@
 package com.yuemo.cart.service;
 
-import com.yuemo.cart.entity.CartItem;
+import com.yuemo.cart.dto.CartItemVO;
 
 import java.util.List;
 
@@ -8,15 +8,17 @@ public interface CartService {
 
     void addItem(Long userId, Long skuId, Integer quantity);
 
-    List<CartItem> listItems(Long userId);
+    List<CartItemVO> listItems(Long userId);
 
-    void updateQuantity(Long userId, Long itemId, Integer quantity);
+    void updateQuantity(Long userId, Long skuId, Integer quantity);
 
-    void removeItem(Long userId, Long itemId);
+    void removeItem(Long userId, Long skuId);
 
-    void toggleSelect(Long userId, Long itemId, Boolean selected);
+    void toggleSelect(Long userId, Long skuId, Boolean selected);
 
     void clearSelected(Long userId);
 
-    List<CartItem> getSelectedItems(Long userId);
+    List<CartItemVO> getSelectedItems(Long userId);
+
+    void selectAll(Long userId, Boolean selected);
 }

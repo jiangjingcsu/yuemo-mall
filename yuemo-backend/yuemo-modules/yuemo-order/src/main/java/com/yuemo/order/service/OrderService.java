@@ -10,6 +10,8 @@ public interface OrderService {
 
     Order getOrderById(Long id);
 
+    Order getOrderByIdAndUserId(Long id, Long userId);
+
     IPage<Order> pageOrders(Long userId, Integer page, Integer size, Integer status);
 
     void cancelOrder(Long userId, Long orderId);
@@ -21,4 +23,8 @@ public interface OrderService {
     void confirmReceive(Long userId, Long orderId);
 
     void deleteOrder(Long userId, Long orderId);
+
+    boolean cancelOrderWithCas(Long orderId);
+
+    void refundOrder(Long orderId);
 }

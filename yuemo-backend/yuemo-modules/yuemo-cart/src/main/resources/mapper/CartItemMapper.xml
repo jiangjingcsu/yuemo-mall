@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuemo.cart.mapper.CartItemMapper">
+
+    <insert id="upsertOnDuplicateKey">
+        INSERT INTO yu_cart_item (user_id, product_id, sku_id, quantity, selected, deleted)
+        VALUES (#{userId}, #{productId}, #{skuId}, #{quantity}, 1, 0)
+        ON DUPLICATE KEY UPDATE
+            quantity = VALUES(quantity),
+            selected = 1,
+            deleted = 0,
+            update_time = NOW()
+    </insert>
+
+</mapper>

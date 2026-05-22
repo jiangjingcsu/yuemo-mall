@@ -93,14 +93,11 @@ public class SkuServiceImpl implements SkuService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateSkuStock(Long skuId, Integer quantity) {
-        ProductSku sku = getSkuById(skuId);
-        int newStock = sku.getStock() - quantity;
-        if (newStock < 0) {
+        int updated = skuMapper.deductStock(skuId, quantity);
+        if (updated == 0) {
             throw new BusinessException(ResultCode.SKU_STOCK_INSUFFICIENT);
         }
-        sku.setStock(newStock);
-        skuMapper.updateById(sku);
-        syncProductAggregate(sku.getProductId());
+        syncProductAggregate(skuMapper.selectById(skuId).getProductId());
     }
 
     @Override
@@ -151,5 +148,13 @@ public class SkuServiceImpl implements SkuService {
                 .map(String::trim)
                 .map(Long::parseLong)
                 .toList();
+    }
+
+    @Override
+    public List<ProductSku> batchGetSkusByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return skuMapper.selectBatchIds(ids);
     }
 }

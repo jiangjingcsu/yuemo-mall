@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, InputNumber, Spin, message, Tag, Descriptions, Tabs } from 'antd';
 import { ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import DOMPurify from 'dompurify';
 import { productApi, ProductDetailVO, SkuVO, ReviewSummaryVO } from '../../api/product';
 import { cartApi } from '../../api/cart';
 import ProductImageGallery from '../../components/product/ProductImageGallery';
@@ -162,7 +163,7 @@ export default function ProductDetail() {
             children: (
               <div style={{ padding: '16px 0' }}>
                 {product.description ? (
-                  <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }} />
                 ) : (
                   <p style={{ color: '#999' }}>暂无商品描述</p>
                 )}

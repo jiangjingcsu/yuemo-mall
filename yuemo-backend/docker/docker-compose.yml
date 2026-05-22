@@ -5,15 +5,15 @@ services:
     image: 192.168.1.53/yuemo-mall/backend:${IMAGE_TAG:-latest}
     container_name: yuemo-mall-1
     environment:
-      - DB_HOST=${DB_HOST:-192.168.1.56}
-      - DB_USER=${DB_USER:-root}
-      - DB_PASS=${DB_PASS:-jiangjing}
-      - REDIS_HOST=${REDIS_HOST:-192.168.1.56}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-jiangjing}
-      - ROCKETMQ_NS=${ROCKETMQ_NS:-192.168.1.56:9876}
-      - SENTINEL_DASHBOARD=${SENTINEL_DASHBOARD:-192.168.1.56:8080}
-      - JWT_SECRET=${JWT_SECRET:-yuemo-mall-jwt-secret-key-2024-must-be-at-least-256bits}
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - ROCKETMQ_NS=${ROCKETMQ_NS}
+      - SENTINEL_DASHBOARD=${SENTINEL_DASHBOARD}
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - ./logs/yuemo-mall-1:/app/logs
     ports:
@@ -26,15 +26,15 @@ services:
     image: 192.168.1.53/yuemo-mall/backend:${IMAGE_TAG:-latest}
     container_name: yuemo-mall-2
     environment:
-      - DB_HOST=${DB_HOST:-192.168.1.56}
-      - DB_USER=${DB_USER:-root}
-      - DB_PASS=${DB_PASS:-jiangjing}
-      - REDIS_HOST=${REDIS_HOST:-192.168.1.56}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-jiangjing}
-      - ROCKETMQ_NS=${ROCKETMQ_NS:-192.168.1.56:9876}
-      - SENTINEL_DASHBOARD=${SENTINEL_DASHBOARD:-192.168.1.56:8080}
-      - JWT_SECRET=${JWT_SECRET:-yuemo-mall-jwt-secret-key-2024-must-be-at-least-256bits}
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - ROCKETMQ_NS=${ROCKETMQ_NS}
+      - SENTINEL_DASHBOARD=${SENTINEL_DASHBOARD}
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - ./logs/yuemo-mall-2:/app/logs
     ports:

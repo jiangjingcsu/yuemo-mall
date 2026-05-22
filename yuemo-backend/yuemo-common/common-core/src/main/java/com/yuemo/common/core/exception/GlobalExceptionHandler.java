@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestValueException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -36,6 +37,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleConstraintViolation(ConstraintViolationException e) {
         return Result.fail(ResultCode.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(MissingRequestValueException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public Result<Void> handleMissingRequestValue(MissingRequestValueException e) {
+        log.warn("缺少请求属性: {}", e.getMessage());
+        return Result.fail(ResultCode.UNAUTHORIZED, "请先登录");
     }
 
     @ExceptionHandler(Exception.class)

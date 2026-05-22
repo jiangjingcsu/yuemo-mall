@@ -64,3 +64,10 @@ Desktop.ini
 
 # Local test scripts
 fortest/
+
+# AI Runtime test harness
+test-harness/
+
+# Environment variables (contain secrets)
+.env
+docker/.env

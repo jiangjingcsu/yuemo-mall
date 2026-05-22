@@ -1,20 +1,14 @@
 package com.yuemo.product.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.yuemo.common.core.response.PageResult;
 import com.yuemo.common.core.response.Result;
 import com.yuemo.product.dto.CreateReviewRequest;
 import com.yuemo.product.dto.SearchCriteria;
-import com.yuemo.product.entity.Brand;
-import com.yuemo.product.entity.Category;
-import com.yuemo.product.entity.ProductReview;
-import com.yuemo.product.entity.SearchKeyword;
-import com.yuemo.product.mapper.SearchKeywordMapper;
 import com.yuemo.product.service.BrandService;
 import com.yuemo.product.service.ProductService;
 import com.yuemo.product.service.ReviewService;
-import com.yuemo.product.vo.ProductDetailVO;
-import com.yuemo.product.vo.ProductVO;
-import com.yuemo.product.vo.ReviewSummaryVO;
+import com.yuemo.product.service.SearchService;
+import com.yuemo.product.vo.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -30,20 +24,20 @@ public class ProductController {
     private final ProductService productService;
     private final BrandService brandService;
     private final ReviewService reviewService;
-    private final SearchKeywordMapper searchKeywordMapper;
+    private final SearchService searchService;
 
     @GetMapping("/list")
-    public Result<IPage<ProductVO>> list(@RequestParam(defaultValue = "1") Integer page,
-                                          @RequestParam(defaultValue = "20") Integer size,
-                                          @RequestParam(required = false) String keyword,
-                                          @RequestParam(required = false) Long categoryId,
-                                          @RequestParam(required = false) Long brandId,
-                                          @RequestParam(required = false) BigDecimal priceMin,
-                                          @RequestParam(required = false) BigDecimal priceMax,
-                                          @RequestParam(defaultValue = "sales_desc") String sortBy) {
+    public Result<PageResult<ProductVO>> list(@RequestParam(defaultValue = "1") Integer page,
+                                               @RequestParam(defaultValue = "20") Integer size,
+                                               @RequestParam(required = false) String keyword,
+                                               @RequestParam(required = false) Long categoryId,
+                                               @RequestParam(required = false) Long brandId,
+                                               @RequestParam(required = false) BigDecimal priceMin,
+                                               @RequestParam(required = false) BigDecimal priceMax,
+                                               @RequestParam(defaultValue = "sales_desc") String sortBy) {
         SearchCriteria criteria = new SearchCriteria(
                 keyword, categoryId, brandId, priceMin, priceMax, page, size, sortBy, null);
-        return Result.success(productService.searchProducts(criteria));
+        return Result.success(PageResult.from(productService.searchProducts(criteria).convert(vo -> vo)));
     }
 
     @GetMapping("/{id}")
@@ -52,30 +46,30 @@ public class ProductController {
     }
 
     @GetMapping("/category/list")
-    public Result<List<Category>> categories() {
-        return Result.success(productService.getCategoryTree());
+    public Result<List<CategoryVO>> categories() {
+        return Result.success(productService.getCategoryTree().stream().map(CategoryVO::from).toList());
     }
 
     @GetMapping("/brand/list")
-    public Result<List<Brand>> brands() {
-        return Result.success(brandService.listAll());
+    public Result<List<BrandVO>> brands() {
+        return Result.success(brandService.listAll().stream().map(BrandVO::from).toList());
     }
 
     @GetMapping("/search/hot")
-    public Result<List<SearchKeyword>> hotKeywords() {
-        return Result.success(searchKeywordMapper.selectHotKeywords(10));
+    public Result<List<SearchKeywordVO>> hotKeywords() {
+        return Result.success(searchService.getHotKeywords(10));
     }
 
     @GetMapping("/search/suggest")
-    public Result<List<SearchKeyword>> suggest(@RequestParam String keyword) {
-        return Result.success(searchKeywordMapper.selectSuggestions(keyword, 8));
+    public Result<List<SearchKeywordVO>> suggest(@RequestParam String keyword) {
+        return Result.success(searchService.getSuggestions(keyword, 8));
     }
 
     @GetMapping("/{id}/reviews")
-    public Result<IPage<ProductReview>> reviews(@PathVariable Long id,
-                                                 @RequestParam(defaultValue = "1") Integer page,
-                                                 @RequestParam(defaultValue = "10") Integer size) {
-        return Result.success(reviewService.getReviewsByProduct(id, page, size));
+    public Result<PageResult<ProductReviewVO>> reviews(@PathVariable Long id,
+                                                        @RequestParam(defaultValue = "1") Integer page,
+                                                        @RequestParam(defaultValue = "10") Integer size) {
+        return Result.success(PageResult.from(reviewService.getReviewsByProduct(id, page, size).convert(ProductReviewVO::from)));
     }
 
     @GetMapping("/{id}/review-summary")

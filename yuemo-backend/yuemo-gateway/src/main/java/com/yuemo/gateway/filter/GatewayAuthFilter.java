@@ -2,6 +2,7 @@ package com.yuemo.gateway.filter;
 
 import com.yuemo.common.core.response.Result;
 import com.yuemo.common.core.response.ResultCode;
+import com.yuemo.common.security.constant.AuthRedisKeyConstants;
 import com.yuemo.common.security.utils.JwtTokenProvider;
 import com.yuemo.gateway.properties.GatewayProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,7 +70,7 @@ public class GatewayAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String blacklistKey = "token:blacklist:" + token;
+            String blacklistKey = AuthRedisKeyConstants.TOKEN_BLACKLIST_PREFIX + token;
             if (Boolean.TRUE.equals(redisTemplate.hasKey(blacklistKey))) {
                 writeUnauthorized(response, ResultCode.UNAUTHORIZED, "Token 已失效，请重新登录");
                 return;
@@ -83,7 +84,7 @@ public class GatewayAuthFilter extends OncePerRequestFilter {
 
             // admin 接口校验角色
             if (path.startsWith("/api/admin/")) {
-                String roleKey = "user:role:" + userId;
+                String roleKey = AuthRedisKeyConstants.USER_ROLE_PREFIX + userId;
                 String role = (String) redisTemplate.opsForValue().get(roleKey);
                 if (!"ADMIN".equals(role)) {
                     writeForbidden(response, "无访问权限，需要管理员角色");

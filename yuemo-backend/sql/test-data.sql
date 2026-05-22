@@ -97,16 +97,16 @@ INSERT INTO `yu_product` (`id`, `name`, `category_id`, `title`, `description`, `
 -- 5. 购物车测试数据
 -- ============================================
 
-INSERT INTO `yu_cart_item` (`id`, `user_id`, `product_id`, `product_name`, `product_image`, `price`, `quantity`, `selected`) VALUES
-(1, 1, 1, 'iPhone 15 Pro', 'https://picsum.photos/seed/iphone15/400/400', 8999.00, 1, 1),
-(2, 1, 4, 'MacBook Pro 14英寸', 'https://picsum.photos/seed/macbook14/400/400', 14999.00, 1, 1),
-(3, 1, 13, '阳光玫瑰葡萄', 'https://picsum.photos/seed/grape/400/400', 89.00, 2, 1),
-(4, 1, 17, '活着', 'https://picsum.photos/seed/book1/400/400', 36.00, 1, 0),
-(5, 1, 9, '纯棉商务衬衫', 'https://picsum.photos/seed/shirt/400/400', 199.00, 3, 1),
-(6, 2, 7, 'Apple Watch S9', 'https://picsum.photos/seed/watch9/400/400', 3299.00, 1, 1),
-(7, 2, 11, '连衣裙', 'https://picsum.photos/seed/dress/400/400', 299.00, 2, 1),
-(8, 3, 2, '小米14 Ultra', 'https://picsum.photos/seed/xiaomi14/400/400', 6999.00, 1, 1),
-(9, 4, 15, '坚果礼盒', 'https://picsum.photos/seed/nuts/400/400', 128.00, 5, 1);
+INSERT INTO `yu_cart_item` (`id`, `user_id`, `product_id`, `sku_id`, `quantity`, `selected`) VALUES
+(1, 1, 1, 1, 1, 1),
+(2, 1, 4, 4, 1, 1),
+(3, 1, 13, 13, 2, 1),
+(4, 1, 17, 17, 1, 0),
+(5, 1, 9, 9, 3, 1),
+(6, 2, 7, 7, 1, 1),
+(7, 2, 11, 11, 2, 1),
+(8, 3, 2, 2, 1, 1),
+(9, 4, 15, 15, 5, 1);
 
 -- ============================================
 -- 6. 订单测试数据

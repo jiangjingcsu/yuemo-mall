@@ -1,8 +1,8 @@
 package com.yuemo.admin.controller;
 
 import com.yuemo.common.core.response.Result;
-import com.yuemo.promotion.entity.Coupon;
 import com.yuemo.promotion.service.CouponService;
+import com.yuemo.promotion.vo.CouponVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,9 +14,8 @@ public class AdminCouponController {
     private final CouponService couponService;
 
     @PostMapping
-    public Result<Void> create(@RequestBody Coupon coupon) {
+    public Result<CouponVO> create(@RequestBody com.yuemo.promotion.entity.Coupon coupon) {
         couponService.createCoupon(coupon);
-        System.out.println("创建优惠券成功");
-        return Result.success();
+        return Result.success(CouponVO.from(coupon));
     }
 }

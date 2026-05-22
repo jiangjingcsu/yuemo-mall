@@ -11,7 +11,7 @@ public interface PaymentService {
 
     String handleCallback(Integer payType, Map<String, String> params);
 
-    Payment getPaymentById(Long id);
+    Payment getPaymentByIdAndUserId(Long id, Long userId);
 
     IPage<Payment> listPayments(Long userId, Integer page, Integer size);
 

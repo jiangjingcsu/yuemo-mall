@@ -1,6 +1,7 @@
 package com.yuemo.order.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yuemo.cart.service.CartService;
@@ -11,6 +12,7 @@ import com.yuemo.order.dto.CreateOrderDTO;
 import com.yuemo.order.entity.Order;
 import com.yuemo.order.entity.OrderItem;
 import com.yuemo.order.entity.OrderLog;
+import com.yuemo.order.enums.OrderStatus;
 import com.yuemo.order.mapper.OrderItemMapper;
 import com.yuemo.order.mapper.OrderLogMapper;
 import com.yuemo.order.mapper.OrderMapper;
@@ -55,25 +57,49 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> items = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
+        Map<Long, Integer> skuStockMap = new java.util.LinkedHashMap<>();
 
-        for (CreateOrderDTO.OrderItemDTO itemDTO : dto.getItems()) {
-            Product product = productService.getProductById(itemDTO.getProductId());
+        for (CreateOrderDTO.OrderItemDTO itemDTO : dto.items()) {
+            Product product = productService.getProductById(itemDTO.productId());
+            if (product == null) {
+                throw new BusinessException(ResultCode.PRODUCT_NOT_FOUND);
+            }
+            if (product.getStatus() == null || product.getStatus() != 1) {
+                throw new BusinessException(ResultCode.BAD_REQUEST);
+            }
 
             BigDecimal price = product.getPrice();
-            if (itemDTO.getSkuId() != null) {
-                ProductSku sku = skuService.getSkuById(itemDTO.getSkuId());
-                if (sku != null && sku.getPrice() != null) {
+            Long skuId = itemDTO.skuId();
+            String specText = null;
+
+            if (skuId != null) {
+                ProductSku sku = skuService.getSkuById(skuId);
+                if (sku == null || sku.getStatus() == null || sku.getStatus() != 1) {
+                    throw new BusinessException(ResultCode.SKU_NOT_FOUND);
+                }
+                if (sku.getStock() == null || sku.getStock() < itemDTO.quantity()) {
+                    throw new BusinessException(ResultCode.SKU_STOCK_INSUFFICIENT);
+                }
+                if (sku.getPrice() != null) {
                     price = sku.getPrice();
+                }
+                specText = sku.getSpecText();
+                skuStockMap.put(skuId, itemDTO.quantity());
+            } else {
+                if (product.getStock() != null && product.getStock() < itemDTO.quantity()) {
+                    throw new BusinessException(ResultCode.SKU_STOCK_INSUFFICIENT);
                 }
             }
 
             OrderItem item = new OrderItem();
-            item.setProductId(itemDTO.getProductId());
-            item.setQuantity(itemDTO.getQuantity());
+            item.setProductId(itemDTO.productId());
+            item.setSkuId(skuId);
+            item.setQuantity(itemDTO.quantity());
             item.setPrice(price);
-            item.setTotalAmount(price.multiply(BigDecimal.valueOf(itemDTO.getQuantity())));
+            item.setTotalAmount(price.multiply(BigDecimal.valueOf(itemDTO.quantity())));
             item.setProductName(product.getName());
             item.setProductImage(product.getMainImage());
+            item.setSpecText(specText);
             items.add(item);
             totalAmount = totalAmount.add(item.getTotalAmount());
         }
@@ -83,9 +109,9 @@ public class OrderServiceImpl implements OrderService {
         order.setUserId(userId);
         order.setTotalAmount(totalAmount);
         order.setPayAmount(totalAmount);
-        order.setStatus(0);
-        order.setAddressId(dto.getAddressId());
-        order.setRemark(dto.getRemark());
+        order.setStatus(OrderStatus.UNPAID.getCode());
+        order.setAddressId(dto.addressId());
+        order.setRemark(dto.remark());
         orderMapper.insert(order);
 
         for (OrderItem item : items) {
@@ -93,13 +119,13 @@ public class OrderServiceImpl implements OrderService {
             orderItemMapper.insert(item);
         }
 
-        Map<Long, Integer> stockMap = dto.getItems().stream()
-                .collect(Collectors.toMap(CreateOrderDTO.OrderItemDTO::getProductId, CreateOrderDTO.OrderItemDTO::getQuantity));
-        Message<Map<Long, Integer>> message = MessageBuilder
-                .withPayload(stockMap)
-                .setHeader("orderId", order.getId())
-                .build();
-        rocketMQTemplate.sendMessageInTransaction("order-stock-preoccupy", message, order);
+        if (!skuStockMap.isEmpty()) {
+            Message<Map<Long, Integer>> message = MessageBuilder
+                    .withPayload(skuStockMap)
+                    .setHeader("orderId", order.getId())
+                    .build();
+            rocketMQTemplate.sendMessageInTransaction("order-stock-preoccupy", message, order);
+        }
 
         try {
             cartService.clearSelected(userId);
@@ -116,6 +142,20 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
+        order.setItems(orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, id)));
+        return order;
+    }
+
+    @Override
+    public Order getOrderByIdAndUserId(Long id, Long userId) {
+        Order order = orderMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
+        }
+        order.verifyOwnership(userId);
+        order.setItems(orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, id)));
         return order;
     }
 
@@ -136,19 +176,13 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
-        if (order.getStatus() != 0) {
-            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
-        }
+        order.verifyOwnership(userId);
         int fromStatus = order.getStatus();
-        order.setStatus(4);
+        order.cancel();
         orderMapper.updateById(order);
-        saveOrderLog(orderId, fromStatus, 4, "user:" + userId, "取消订单");
+        saveOrderLog(orderId, fromStatus, OrderStatus.CANCELLED.getCode(), "user:" + userId, "取消订单");
 
-        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
-                .eq(OrderItem::getOrderId, orderId));
-        Map<Long, Integer> stockMap = items.stream()
-                .collect(Collectors.toMap(OrderItem::getProductId, OrderItem::getQuantity));
-        rocketMQTemplate.convertAndSend("order-stock-release", stockMap);
+        releaseStock(orderId);
     }
 
     @Override
@@ -159,13 +193,10 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
-        if (order.getStatus() != 0) {
-            log.warn("订单状态异常，无法更新为已支付: orderNo={}, currentStatus={}", orderNo, order.getStatus());
-            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
-        }
-        order.setStatus(1);
-        order.setPayTime(LocalDateTime.now());
+        int fromStatus = order.getStatus();
+        order.pay();
         orderMapper.updateById(order);
+        saveOrderLog(order.getId(), fromStatus, OrderStatus.PAID.getCode(), "system", "支付成功");
     }
 
     @Override
@@ -175,16 +206,10 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
-        if (order.getStatus() != 1) {
-            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
-        }
         int fromStatus = order.getStatus();
-        order.setStatus(2);
-        order.setLogisticsCompany(logisticsCompany);
-        order.setLogisticsNo(logisticsNo);
-        order.setDeliveryTime(LocalDateTime.now());
+        order.ship(logisticsCompany, logisticsNo);
         orderMapper.updateById(order);
-        saveOrderLog(orderId, fromStatus, 2, "system", "发货");
+        saveOrderLog(orderId, fromStatus, OrderStatus.SHIPPED.getCode(), "system", "发货");
     }
 
     @Override
@@ -194,14 +219,11 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
-        if (order.getStatus() != 2) {
-            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
-        }
+        order.verifyOwnership(userId);
         int fromStatus = order.getStatus();
-        order.setStatus(3);
-        order.setReceiveTime(LocalDateTime.now());
+        order.confirmReceive();
         orderMapper.updateById(order);
-        saveOrderLog(orderId, fromStatus, 3, "user:" + userId, "确认收货");
+        saveOrderLog(orderId, fromStatus, OrderStatus.COMPLETED.getCode(), "user:" + userId, "确认收货");
     }
 
     @Override
@@ -211,11 +233,54 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
-        if (order.getStatus() != 3 && order.getStatus() != 4) {
+        order.verifyOwnership(userId);
+        if (!order.canDelete()) {
             throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
         }
         order.setDeleted(true);
         orderMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean cancelOrderWithCas(Long orderId) {
+        int updated = orderMapper.update(new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, orderId)
+                .eq(Order::getStatus, OrderStatus.UNPAID.getCode())
+                .set(Order::getStatus, OrderStatus.CANCELLED.getCode()));
+        if (updated > 0) {
+            saveOrderLog(orderId, OrderStatus.UNPAID.getCode(), OrderStatus.CANCELLED.getCode(), "system", "超时自动取消");
+            releaseStock(orderId);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void refundOrder(Long orderId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
+        }
+        int fromStatus = order.getStatus();
+        order.setStatus(OrderStatus.REFUNDED.getCode());
+        orderMapper.updateById(order);
+        saveOrderLog(orderId, fromStatus, OrderStatus.REFUNDED.getCode(), "system", "退款成功");
+        releaseStock(orderId);
+    }
+
+    private void releaseStock(Long orderId) {
+        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, orderId));
+
+        Map<Long, Integer> skuStockMap = items.stream()
+                .filter(i -> i.getSkuId() != null)
+                .collect(Collectors.toMap(OrderItem::getSkuId, OrderItem::getQuantity));
+
+        if (!skuStockMap.isEmpty()) {
+            rocketMQTemplate.convertAndSend("order-stock-release", skuStockMap);
+        }
     }
 
     private void saveOrderLog(Long orderId, Integer fromStatus, Integer toStatus, String operator, String remark) {

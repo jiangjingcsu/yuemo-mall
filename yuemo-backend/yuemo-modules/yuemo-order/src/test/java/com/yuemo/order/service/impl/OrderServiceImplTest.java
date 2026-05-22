@@ -66,13 +66,9 @@ class OrderServiceImplTest {
             product.setMainImage("/img/test.jpg");
             when(productService.getProductById(1L)).thenReturn(product);
 
-            CreateOrderDTO dto = new CreateOrderDTO();
-            dto.setAddressId(1L);
-            dto.setRemark("测试备注");
-            CreateOrderDTO.OrderItemDTO itemDTO = new CreateOrderDTO.OrderItemDTO();
-            itemDTO.setProductId(1L);
-            itemDTO.setQuantity(2);
-            dto.setItems(List.of(itemDTO));
+            CreateOrderDTO dto = new CreateOrderDTO(1L, List.of(
+                new CreateOrderDTO.OrderItemDTO(1L, null, 2)
+            ), "测试备注", null);
 
             Order result = orderService.createOrder(1001L, dto);
 

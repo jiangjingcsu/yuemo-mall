@@ -61,6 +61,32 @@ END$$
 DELIMITER ;
 
 -- ============================================
+-- 辅助存储过程：安全删除列（如果列存在才删除）
+-- ============================================
+DROP PROCEDURE IF EXISTS `_safe_drop_column`;
+
+DELIMITER $$
+CREATE PROCEDURE `_safe_drop_column`(
+    IN p_table VARCHAR(64),
+    IN p_column VARCHAR(64)
+)
+BEGIN
+    DECLARE col_exists INT DEFAULT 0;
+    SELECT COUNT(*) INTO col_exists
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = p_table
+      AND COLUMN_NAME = p_column;
+    IF col_exists > 0 THEN
+        SET @sql = CONCAT('ALTER TABLE `', p_table, '` DROP COLUMN `', p_column, '`');
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END$$
+DELIMITER ;
+
+-- ============================================
 -- 一、用户模块
 -- ============================================
 
@@ -374,23 +400,23 @@ CALL `_safe_add_column`('yu_payment', 'refund_time', 'DATETIME DEFAULT NULL COMM
 CREATE TABLE IF NOT EXISTS `yu_cart_item` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
-    `product_id` BIGINT NOT NULL COMMENT '商品ID',
-    `sku_id` BIGINT DEFAULT NULL COMMENT 'SKU ID',
-    `spec_text` VARCHAR(128) DEFAULT NULL COMMENT '规格文本',
-    `product_name` VARCHAR(128) DEFAULT NULL COMMENT '商品名称',
-    `product_image` VARCHAR(512) DEFAULT NULL COMMENT '商品图片',
-    `price` DECIMAL(10,2) DEFAULT NULL COMMENT '加入时价格',
+    `product_id` BIGINT NOT NULL COMMENT '商品ID（冗余，用于快速定位）',
+    `sku_id` BIGINT NOT NULL COMMENT 'SKU ID',
     `quantity` INT NOT NULL DEFAULT 1 COMMENT '数量',
     `selected` TINYINT NOT NULL DEFAULT 1 COMMENT '是否勾选',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_sku` (`user_id`, `sku_id`, `deleted`),
     KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表';
 
-CALL `_safe_add_column`('yu_cart_item', 'sku_id', 'BIGINT DEFAULT NULL COMMENT \'SKU ID\' AFTER `product_id`');
-CALL `_safe_add_column`('yu_cart_item', 'spec_text', 'VARCHAR(128) DEFAULT NULL COMMENT \'规格文本\' AFTER `sku_id`');
+CALL `_safe_drop_column`('yu_cart_item', 'spec_text');
+CALL `_safe_drop_column`('yu_cart_item', 'product_name');
+CALL `_safe_drop_column`('yu_cart_item', 'product_image');
+CALL `_safe_drop_column`('yu_cart_item', 'price');
+CALL `_safe_add_index`('yu_cart_item', 'uk_user_sku', 'UNIQUE KEY `uk_user_sku` (`user_id`, `sku_id`, `deleted`)');
 
 -- ============================================
 -- 六、促销模块

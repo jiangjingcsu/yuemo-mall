@@ -1,10 +1,10 @@
 package com.yuemo.promotion.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.yuemo.common.core.response.PageResult;
 import com.yuemo.common.core.response.Result;
-import com.yuemo.promotion.entity.Coupon;
-import com.yuemo.promotion.entity.UserCoupon;
 import com.yuemo.promotion.service.CouponService;
+import com.yuemo.promotion.vo.CouponVO;
+import com.yuemo.promotion.vo.UserCouponVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,9 +18,9 @@ public class CouponController {
     private final CouponService couponService;
 
     @GetMapping("/list")
-    public Result<IPage<Coupon>> list(@RequestParam(defaultValue = "1") Integer page,
-                                       @RequestParam(defaultValue = "10") Integer size) {
-        return Result.success(couponService.pageCoupons(page, size));
+    public Result<PageResult<CouponVO>> list(@RequestParam(defaultValue = "1") Integer page,
+                                              @RequestParam(defaultValue = "10") Integer size) {
+        return Result.success(PageResult.from(couponService.pageCoupons(page, size)));
     }
 
     @PostMapping("/receive/{couponId}")
@@ -31,8 +31,8 @@ public class CouponController {
     }
 
     @GetMapping("/my")
-    public Result<List<UserCoupon>> myCoupons(@RequestAttribute("userId") Long userId,
-                                               @RequestParam(required = false) Integer status) {
-        return Result.success(couponService.getUserCoupons(userId, status));
+    public Result<List<UserCouponVO>> myCoupons(@RequestAttribute("userId") Long userId,
+                                                 @RequestParam(required = false) Integer status) {
+        return Result.success(couponService.getUserCoupons(userId, status).stream().map(UserCouponVO::from).toList());
     }
 }

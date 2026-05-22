@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Row, Col, Input, Spin, Empty, Pagination, Layout } from 'antd';
+import { Row, Col, Input, Spin, Empty, Pagination, Layout, Result, Button } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { productApi, ProductVO } from '../../api/product';
 import ProductCard from '../../components/product/ProductCard';
@@ -44,8 +44,11 @@ export default function ProductList() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  const [error, setError] = useState<string | null>(null);
+
   const fetchProducts = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await productApi.getList({
         keyword: keyword || undefined,
@@ -59,6 +62,9 @@ export default function ProductList() {
       });
       setProducts(data.records || []);
       setTotal(data.total || 0);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '加载商品失败，请稍后重试';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -131,7 +137,14 @@ export default function ProductList() {
         {/* Product grid */}
         <Content>
           <Spin spinning={loading}>
-            {products.length === 0 && !loading ? (
+            {error ? (
+              <Result
+                status="error"
+                title="加载失败"
+                subTitle={error}
+                extra={<Button type="primary" onClick={() => fetchProducts()}>重试</Button>}
+              />
+            ) : products.length === 0 && !loading ? (
               <Empty description="暂无商品" style={{ padding: 60 }} />
             ) : (
               <>

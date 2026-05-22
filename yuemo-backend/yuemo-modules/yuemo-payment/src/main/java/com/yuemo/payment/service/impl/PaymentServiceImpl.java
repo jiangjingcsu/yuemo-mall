@@ -7,19 +7,23 @@ import com.yuemo.common.core.exception.BusinessException;
 import com.yuemo.common.core.response.ResultCode;
 import com.yuemo.common.core.utils.IdGenerator;
 import com.yuemo.order.entity.Order;
+import com.yuemo.order.enums.OrderStatus;
 import com.yuemo.order.service.OrderService;
+import com.yuemo.payment.constant.PaymentRedisKeyConstants;
+import com.yuemo.payment.dto.RefundMessage;
 import com.yuemo.payment.entity.Payment;
+import com.yuemo.payment.enums.PayType;
+import com.yuemo.payment.enums.PaymentStatus;
+import com.yuemo.payment.handler.PayTypeHandler;
+import com.yuemo.payment.handler.PayTypeHandlerFactory;
 import com.yuemo.payment.mapper.PaymentMapper;
 import com.yuemo.payment.service.PaymentService;
-import com.yuemo.user.service.UserService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -27,85 +31,80 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentMapper paymentMapper;
     private final RocketMQTemplate rocketMQTemplate;
     private final RedisTemplate<String, Object> redisTemplate;
     private final OrderService orderService;
-    private final UserService userService;
+    private final PayTypeHandlerFactory payTypeHandlerFactory;
+
+    public PaymentServiceImpl(PaymentMapper paymentMapper,
+                              RocketMQTemplate rocketMQTemplate,
+                              RedisTemplate<String, Object> redisTemplate,
+                              OrderService orderService,
+                              PayTypeHandlerFactory payTypeHandlerFactory) {
+        this.paymentMapper = paymentMapper;
+        this.rocketMQTemplate = rocketMQTemplate;
+        this.redisTemplate = redisTemplate;
+        this.orderService = orderService;
+        this.payTypeHandlerFactory = payTypeHandlerFactory;
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Payment createPayment(Long userId, Long orderId, Integer payType) {
-        Order order = orderService.getOrderById(orderId);
+        PayType pt = PayType.fromCode(payType);
 
-        if (order.getStatus() != 0) {
+        Order order = orderService.getOrderByIdAndUserId(orderId, userId);
+        if (order.getStatus() != OrderStatus.UNPAID.getCode()) {
             throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
         }
 
-        // 余额支付：同步校验余额并扣款
-        if (payType != null && payType == 3) {
-            return payByBalance(userId, order);
+        Payment existing = paymentMapper.selectOne(new LambdaQueryWrapper<Payment>()
+                .eq(Payment::getOrderId, orderId)
+                .eq(Payment::getStatus, PaymentStatus.PENDING.getCode()));
+        if (existing != null) {
+            return existing;
         }
 
-        // 微信/支付宝：创建待支付记录，等待回调
         Payment payment = new Payment();
         payment.setPaymentNo(generatePaymentNo(userId));
         payment.setOrderId(orderId);
         payment.setOrderNo(order.getOrderNo());
         payment.setUserId(userId);
         payment.setAmount(order.getPayAmount());
-        payment.setPayType(payType);
-        payment.setStatus(0);
+        payment.setPayType(pt.getCode());
+
+        PayTypeHandler handler = payTypeHandlerFactory.get(payType);
+        handler.doPay(userId, payment);
+
         paymentMapper.insert(payment);
-        return payment;
-    }
-
-    private Payment payByBalance(Long userId, Order order) {
-        BigDecimal amount = order.getPayAmount();
-        BigDecimal balance = userService.getBalance(userId);
-
-        if (balance.compareTo(amount) < 0) {
-            throw new BusinessException(ResultCode.PAYMENT_FAILED.getCode(), "账户余额不足，当前余额 ¥" + balance);
-        }
-
-        userService.deductBalance(userId, amount);
-
-        Payment payment = new Payment();
-        payment.setPaymentNo(generatePaymentNo(userId));
-        payment.setOrderId(order.getId());
-        payment.setOrderNo(order.getOrderNo());
-        payment.setUserId(userId);
-        payment.setAmount(amount);
-        payment.setPayType(3);
-        payment.setStatus(1);
-        payment.setPayTime(LocalDateTime.now());
-        paymentMapper.insert(payment);
-
-        rocketMQTemplate.convertAndSend("payment-callback", payment.getOrderNo());
-
-        log.info("余额支付成功: userId={}, orderNo={}, amount={}", userId, order.getOrderNo(), amount);
         return payment;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String handleCallback(Integer payType, Map<String, String> params) {
+        String sign = params.get("sign");
+        if (sign == null || sign.isBlank()) {
+            log.error("支付回调缺少签名: payType={}", payType);
+            return "fail";
+        }
+
         if (!verifySign(payType, params)) {
-            log.error("支付回调验签失败: payType={}, params={}", payType, params);
+            log.error("支付回调验签失败: payType={}", payType);
             return "fail";
         }
 
         String paymentNo = params.get("out_trade_no");
         String thirdTradeNo = params.get("trade_no");
 
-        String idempotentKey = "payment:callback:" + paymentNo;
+        String idempotentKey = PaymentRedisKeyConstants.PAYMENT_CALLBACK_PREFIX + paymentNo;
         Boolean locked = redisTemplate.opsForValue()
-                .setIfAbsent(idempotentKey, "1", 30, TimeUnit.SECONDS);
+                .setIfAbsent(idempotentKey, "1", PaymentRedisKeyConstants.CALLBACK_TTL_MINUTES, TimeUnit.MINUTES);
         if (Boolean.FALSE.equals(locked)) {
-            log.warn("重复回调: paymentNo={}", paymentNo);
+            log.warn("重复回调（Redis幂等）: paymentNo={}", paymentNo);
             return "success";
         }
 
@@ -114,37 +113,34 @@ public class PaymentServiceImpl implements PaymentService {
         if (payment == null) {
             throw new BusinessException(ResultCode.PAYMENT_CALLBACK_ERROR);
         }
-        if (payment.getStatus() != 0) {
+
+        if (!payment.isPending()) {
             return "success";
         }
 
-        payment.setStatus(1);
-        payment.setThirdTradeNo(thirdTradeNo);
-        payment.setPayTime(LocalDateTime.now());
+        payment.markSuccess(thirdTradeNo);
         paymentMapper.updateById(payment);
 
         rocketMQTemplate.convertAndSend("payment-callback", payment.getOrderNo());
-
         return "success";
     }
 
-    /**
-     * 验签 — 实际应调用微信/支付宝 SDK 验证回调参数签名
-     */
     private boolean verifySign(Integer payType, Map<String, String> params) {
-        String sign = params.remove("sign");
-        if (sign == null || sign.isBlank()) {
-            return false;
+        if (payType == PayType.BALANCE.getCode()) {
+            return true;
         }
-        // TODO: 接入真实的微信/支付宝 SDK 签名验证
-        // 微信: WXPayUtil.verifySign(params, mchKey, sign)
-        // 支付宝: AlipaySignature.rsaCheckV1(params, alipayPublicKey, charset, signType)
-        return true;
+        log.error("支付回调签名验证未实现: payType={}, 真实SDK未接入，拒绝回调", payType);
+        return false;
     }
 
     @Override
-    public Payment getPaymentById(Long id) {
-        return paymentMapper.selectById(id);
+    public Payment getPaymentByIdAndUserId(Long id, Long userId) {
+        Payment payment = paymentMapper.selectById(id);
+        if (payment == null) {
+            throw new BusinessException(ResultCode.PAYMENT_NOT_FOUND);
+        }
+        payment.verifyOwnership(userId);
+        return payment;
     }
 
     @Override
@@ -152,18 +148,15 @@ public class PaymentServiceImpl implements PaymentService {
     public void refund(Long userId, Long orderId, String reason) {
         Payment payment = paymentMapper.selectOne(new LambdaQueryWrapper<Payment>()
                 .eq(Payment::getOrderId, orderId));
-        if (payment == null || payment.getStatus() != 1) {
-            throw new BusinessException(ResultCode.REFUND_FAILED);
+        if (payment == null) {
+            throw new BusinessException(ResultCode.PAYMENT_NOT_FOUND);
         }
-
-        // TODO: 调用第三方退款接口
-        payment.setStatus(3);
-        payment.setRefundNo(generateRefundNo(userId));
-        payment.setRefundReason(reason);
-        payment.setRefundTime(LocalDateTime.now());
+        payment.verifyOwnership(userId);
+        payment.markRefunded(generateRefundNo(userId), reason);
         paymentMapper.updateById(payment);
 
-        rocketMQTemplate.convertAndSend("payment-refund", orderId);
+        RefundMessage refundMessage = new RefundMessage(orderId, userId, payment.getAmount());
+        rocketMQTemplate.convertAndSend("payment-refund", refundMessage);
     }
 
     @Override

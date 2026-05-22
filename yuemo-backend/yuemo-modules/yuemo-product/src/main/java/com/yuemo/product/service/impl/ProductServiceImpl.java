@@ -251,27 +251,19 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStock(Long id, Integer quantity) {
-        Product product = productMapper.selectById(id);
-        if (product == null) {
-            throw new BusinessException(ResultCode.PRODUCT_NOT_FOUND);
-        }
-        int newStock = product.getStock() - quantity;
-        if (newStock < 0) {
+        int updated = productMapper.deductStock(id, quantity);
+        if (updated == 0) {
             throw new BusinessException(ResultCode.PRODUCT_STOCK_INSUFFICIENT);
         }
-        product.setStock(newStock);
-        productMapper.updateById(product);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void restoreStock(Long id, Integer quantity) {
-        Product product = productMapper.selectById(id);
-        if (product == null) {
+        int updated = productMapper.restoreStock(id, quantity);
+        if (updated == 0) {
             throw new BusinessException(ResultCode.PRODUCT_NOT_FOUND);
         }
-        product.setStock(product.getStock() + quantity);
-        productMapper.updateById(product);
     }
 
     @Override
@@ -307,6 +299,14 @@ public class ProductServiceImpl implements ProductService {
             child.setChildren(buildChildren(child.getId(), childrenMap));
         }
         return children;
+    }
+
+    @Override
+    public List<Product> batchGetProductsByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return productMapper.selectBatchIds(ids);
     }
 
     private void saveTagRelations(Long productId, List<Long> tagIds) {

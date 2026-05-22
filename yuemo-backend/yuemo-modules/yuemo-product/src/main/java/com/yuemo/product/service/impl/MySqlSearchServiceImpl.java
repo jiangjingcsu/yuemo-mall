@@ -12,6 +12,7 @@ import com.yuemo.product.mapper.ProductTagMapper;
 import com.yuemo.product.mapper.SearchKeywordMapper;
 import com.yuemo.product.service.SearchService;
 import com.yuemo.product.vo.ProductVO;
+import com.yuemo.product.vo.SearchKeywordVO;
 import com.yuemo.product.vo.TagVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -147,5 +148,17 @@ public class MySqlSearchServiceImpl implements SearchService {
     @Override
     public void removeIndex(Long productId) {
         // MySQL: no-op, FULLTEXT index updates automatically
+    }
+
+    @Override
+    public List<SearchKeywordVO> getHotKeywords(int limit) {
+        return searchKeywordMapper.selectHotKeywords(limit).stream()
+                .map(SearchKeywordVO::from).toList();
+    }
+
+    @Override
+    public List<SearchKeywordVO> getSuggestions(String prefix, int limit) {
+        return searchKeywordMapper.selectSuggestions(prefix, limit).stream()
+                .map(SearchKeywordVO::from).toList();
     }
 }

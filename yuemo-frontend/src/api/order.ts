@@ -1,13 +1,25 @@
 import request from '../utils/request';
 
+export interface OrderItem {
+  id: string;
+  productId: string;
+  skuId: string | null;
+  productName: string;
+  productImage: string;
+  specText: string | null;
+  price: number;
+  quantity: number;
+  totalAmount: number;
+}
+
 export interface Order {
-  id: number;
+  id: string;
   orderNo: string;
-  userId: number;
+  userId: string;
   totalAmount: number;
   payAmount: number;
   status: number;
-  addressId: number;
+  addressId: string;
   remark: string;
   logisticsCompany: string;
   logisticsNo: string;
@@ -15,6 +27,7 @@ export interface Order {
   deliveryTime: string;
   receiveTime: string;
   createTime: string;
+  items?: OrderItem[];
 }
 
 export interface OrderPage {
@@ -36,10 +49,10 @@ export const orderApi = {
     request.post<Order>('/order/create', params),
   getList: (params: { page: number; size: number; status?: number }) =>
     request.get<OrderPage>('/order/list', { params }),
-  getDetail: (id: number) => request.get<Order>(`/order/${id}`),
-  cancel: (id: number) => request.post(`/order/cancel/${id}`),
-  ship: (id: number, logisticsCompany: string, logisticsNo: string) =>
+  getDetail: (id: string) => request.get<Order>(`/order/${id}`),
+  cancel: (id: string) => request.post(`/order/cancel/${id}`),
+  ship: (id: string, logisticsCompany: string, logisticsNo: string) =>
     request.post(`/order/ship/${id}`, null, { params: { logisticsCompany, logisticsNo } }),
-  confirm: (id: number) => request.post(`/order/confirm/${id}`),
-  delete: (id: number) => request.delete(`/order/${id}`),
+  confirm: (id: string) => request.post(`/order/confirm/${id}`),
+  delete: (id: string) => request.delete(`/order/${id}`),
 };

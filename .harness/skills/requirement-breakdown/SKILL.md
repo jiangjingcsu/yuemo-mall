@@ -6,6 +6,7 @@ description: "将用户需求拆解为结构化、可执行的开发任务清单
 # 需求拆解 Skill
 
 将用户的高层需求拆解为结构化、可执行的开发任务清单，确保需求落地不遗漏。
+> 治理规则：`.harness/workflows/feature-development.md`
 
 ## 触发条件
 
@@ -15,6 +16,21 @@ description: "将用户需求拆解为结构化、可执行的开发任务清单
 - 用户描述业务场景但未给出具体实现方案
 - 用户的需求描述模糊、笼统，需要进一步细化
 - 用户要求评估某个需求的实现范围
+
+## 与 Workflow 的关系
+
+```yaml
+定位: feature-development.md 工作流的需求拆解子工具
+
+本 Skill 覆盖:
+  - feature-development.md Step 1（需求分析）→ 本 Skill 第一步至第三步
+  - feature-development.md Step 2（任务拆解）→ 本 Skill 第四步至第五步
+
+联动 Skill:
+  - 下游: skills/ddd-design/SKILL.md — 需求涉及领域建模时
+  - 下游: skills/api-design/SKILL.md — 需求涉及 API 变更时
+  - 关联: skills/refactor-analysis/SKILL.md — 需求涉及重构时
+```
 
 ## 拆解流程
 
@@ -30,9 +46,27 @@ description: "将用户需求拆解为结构化、可执行的开发任务清单
 
 如果用户的需求描述不足以完成拆解，必须使用 AskUserQuestion 工具向用户提问澄清，而不是自行假设。
 
-### 第二步：影响面分析
+### 第二步：上下文加载（必须）
 
-基于项目架构，分析需求涉及的影响面：
+在分析影响面前，先加载相关上下文：
+
+```yaml
+必读文档:
+  - .harness/docs/business-domain.md — 确认需求属于哪个业务领域
+  - .harness/docs/module-responsibility.md — 确认涉及的模块及其边界
+  - .harness/docs/data-flow.md — 确认影响的数据流
+  - .harness/rules/module-boundary.md — 确认模块依赖白名单
+  - .harness/memory/decisions.md — 确认需求实现方式不与已有架构决策冲突
+  - .harness/memory/known-issues.md — 确认需求是否受现有已知问题影响
+```
+
+参考上下文:
+- `.harness/memory/decisions.md` — 架构决策（需求实现方式可能与已有决策冲突）
+- `.harness/memory/known-issues.md` — 已知问题（需求可能受现有问题影响）
+
+### 第三步：影响面分析
+
+基于项目架构和上下文，分析需求涉及的影响面：
 
 **后端影响面**（Spring Boot 3.2 + MyBatis-Plus）：
 
@@ -42,7 +76,7 @@ description: "将用户需求拆解为结构化、可执行的开发任务清单
 | 数据库变更 | 是否需要新建表、加字段、改索引？参考 `yuemo-backend/sql/` |
 | API 变更 | 是否需要新增或修改 API？遵循 `.harness/docs/api-conventions.md` |
 | 缓存影响 | 是否涉及 Redis 缓存策略变更？ |
-| 消息队列 | 是否需要引入 RocketMQ 消息？ |
+| 消息队列 | 是否需要引入 RocketMQ 消息？需要注意消息体变更的版本兼容（新旧消费者并存策略、灰度发布过渡方案）？ |
 | 网关/鉴权 | 是否需要修改 yuemo-gateway 的路由或鉴权规则？ |
 | 限流熔断 | 是否需要 Sentinel 规则调整？ |
 
@@ -64,7 +98,7 @@ description: "将用户需求拆解为结构化、可执行的开发任务清单
 | CI/CD | `.gitlab-ci.yml` 流水线是否需要修改？ |
 | Nginx | 反向代理/负载均衡配置是否需要调整？ |
 
-### 第三步：任务拆解
+### 第四步：任务拆解
 
 将需求拆解为具体的开发任务，每个任务必须满足以下要求：
 
@@ -105,6 +139,11 @@ description: "将用户需求拆解为结构化、可执行的开发任务清单
      - 依赖：BE-1
      - 验收：{验收标准}
 
+【测试】
+  ☐ TEST-1: {任务描述}
+     - 依赖：BE-1
+     - 验收：{验收标准}
+
 【前端】
   ☐ FE-1: {任务描述}
      - 依赖：BE-1（API 就绪）
@@ -124,11 +163,16 @@ description: "将用户需求拆解为结构化、可执行的开发任务清单
 - {风险1}
 - {风险2}
 
+🔒 安全审查点
+- {涉及用户数据的审查点}
+- {涉及支付的审查点}
+- {涉及权限的审查点}
+
 🔗 任务依赖关系图
 {用文本描述任务间的依赖链路}
 ```
 
-### 第四步：优先级排序
+### 第五步：优先级排序
 
 对拆解出的任务进行优先级排序：
 
@@ -142,7 +186,7 @@ description: "将用户需求拆解为结构化、可执行的开发任务清单
 2. **API 先行**：后端任务中，API 定义必须先于业务逻辑实现
 3. **前后端解耦**：前端任务依赖后端 API 就绪，但可并行开发（使用 mock）
 4. **遵循项目规范**：所有任务必须符合 `.harness/rules/` 下的编码规范
-5. **安全合规**：涉及用户数据、支付、权限的需求，必须标注安全审查点
+5. **安全合规**：涉及用户数据、支付、权限的需求，必须在任务清单中标注安全审查点
 6. **不自行假设**：需求不明确时，提问而非假设
 
 ## 输出要求

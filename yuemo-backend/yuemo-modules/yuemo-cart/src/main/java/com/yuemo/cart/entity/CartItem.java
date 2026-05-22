@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.yuemo.common.core.base.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import java.math.BigDecimal;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -14,10 +13,6 @@ public class CartItem extends BaseEntity {
     private Long userId;
     private Long productId;
     private Long skuId;
-    private String specText;
-    private String productName;
-    private String productImage;
-    private BigDecimal price;
     private Integer quantity;
     private Boolean selected;
 }

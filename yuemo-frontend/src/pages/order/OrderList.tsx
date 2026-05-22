@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Table, Tag, Button, Space, message } from 'antd';
-import { orderApi, Order, OrderPage } from '../../api/order';
+import { useCallback, useEffect, useState } from 'react';
+import { Table, Tag, Button, Space, message, Popconfirm } from 'antd';
+import { orderApi, type Order, type OrderPage } from '../../api/order';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 
 const STATUS_MAP: Record<number, { label: string; color: string }> = {
@@ -12,22 +13,26 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
 };
 
 export default function OrderList() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async (p: number = page) => {
     setLoading(true);
     try {
-      const data = await orderApi.getList({ page: 1, size: 50 });
+      const data = await orderApi.getList({ page: p, size: 10 });
       setOrders(data.records || []);
+      setTotal(data.total || 0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => { fetchOrders(1); }, []);
 
-  const handleCancel = async (id: number) => {
+  const handleCancel = async (id: string) => {
     try {
       await orderApi.cancel(id);
       message.success('已取消');
@@ -35,7 +40,7 @@ export default function OrderList() {
     } catch { /* handled */ }
   };
 
-  const handleConfirm = async (id: number) => {
+  const handleConfirm = async (id: string) => {
     try {
       await orderApi.confirm(id);
       message.success('已确认收货');
@@ -43,7 +48,7 @@ export default function OrderList() {
     } catch { /* handled */ }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
       await orderApi.delete(id);
       message.success('已删除');
@@ -52,10 +57,15 @@ export default function OrderList() {
   };
 
   const columns = [
-    { title: '订单号', dataIndex: 'orderNo', key: 'orderNo' },
+    {
+      title: '订单号', dataIndex: 'orderNo', key: 'orderNo',
+      render: (v: string, r: Order) => (
+        <a onClick={() => navigate(`/order/${r.id}`)}>{v}</a>
+      ),
+    },
     {
       title: '金额', dataIndex: 'payAmount', key: 'payAmount',
-      render: (v: number) => `¥${v?.toFixed(2)}`,
+      render: (v: number) => `¥${(v ?? 0).toFixed(2)}`,
     },
     {
       title: '状态', dataIndex: 'status', key: 'status',
@@ -73,18 +83,34 @@ export default function OrderList() {
       render: (_: unknown, record: Order) => (
         <Space>
           {record.status === 0 && (
-            <Button size="small" danger onClick={() => handleCancel(record.id)}>取消</Button>
+            <>
+              <Button size="small" type="primary" onClick={() => navigate(`/payment/${record.id}`)}>去支付</Button>
+              <Popconfirm title="确定取消此订单？" onConfirm={() => handleCancel(record.id)}>
+                <Button size="small" danger>取消</Button>
+              </Popconfirm>
+            </>
           )}
           {record.status === 2 && (
             <Button size="small" type="primary" onClick={() => handleConfirm(record.id)}>确认收货</Button>
           )}
           {(record.status === 3 || record.status === 4) && (
-            <Button size="small" onClick={() => handleDelete(record.id)}>删除</Button>
+            <Popconfirm title="确定删除此订单？" onConfirm={() => handleDelete(record.id)}>
+              <Button size="small">删除</Button>
+            </Popconfirm>
           )}
         </Space>
       ),
     },
   ];
 
-  return <Table columns={columns} dataSource={orders} rowKey="id" loading={loading} />;
+  return (
+    <Table columns={columns} dataSource={orders} rowKey="id" loading={loading}
+           pagination={{
+             current: page,
+             total,
+             pageSize: 10,
+             onChange: (p) => { setPage(p); fetchOrders(p); },
+             showTotal: (t) => `共 ${t} 条`,
+           }} />
+  );
 }

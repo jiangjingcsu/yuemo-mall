@@ -1,6 +1,7 @@
 package com.yuemo.gateway.filter;
 
 import com.yuemo.common.core.response.Result;
+import com.yuemo.gateway.constant.GatewayRedisKeyConstants;
 import com.yuemo.gateway.properties.GatewayProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -33,13 +34,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final GatewayProperties gatewayProperties;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final String RATE_LIMIT_SCRIPT =
+    private static final String SLIDING_WINDOW_SCRIPT =
             "local key = KEYS[1] " +
             "local limit = tonumber(ARGV[1]) " +
             "local window = tonumber(ARGV[2]) or 60 " +
-            "local current = redis.call('INCR', key) " +
-            "if current == 1 then redis.call('EXPIRE', key, window) end " +
-            "return current";
+            "local now = tonumber(ARGV[3]) " +
+            "local windowStart = now - window * 1000 " +
+            "redis.call('ZREMRANGEBYSCORE', key, '-inf', windowStart) " +
+            "local count = redis.call('ZCARD', key) " +
+            "if count < limit then " +
+            "  redis.call('ZADD', key, now, now .. ':' .. math.random(1000000)) " +
+            "  redis.call('EXPIRE', key, window) " +
+            "  return count " +
+            "end " +
+            "return count";
 
     public RateLimitFilter(StringRedisTemplate redisTemplate,
                            GatewayProperties gatewayProperties) {
@@ -61,11 +69,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String key = buildRateLimitKey(request, path);
         try {
+            long now = System.currentTimeMillis();
             Long currentCount = redisTemplate.execute(
-                    (RedisScript<Long>) RedisScript.of(RATE_LIMIT_SCRIPT, Long.class),
+                    (RedisScript<Long>) RedisScript.of(SLIDING_WINDOW_SCRIPT, Long.class),
                     Collections.singletonList(key),
                     String.valueOf(permits),
-                    "60"
+                    "60",
+                    String.valueOf(now)
             );
 
             if (currentCount != null && currentCount > permits) {
@@ -100,13 +110,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private String buildRateLimitKey(HttpServletRequest request, String path) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId != null) {
-            return "rate:" + path + ":" + userId;
+            return GatewayRedisKeyConstants.RATE_LIMIT_PREFIX + path + ":" + userId;
         }
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty()) {
             ip = request.getRemoteAddr();
         }
-        return "rate:" + path + ":" + ip;
+        return GatewayRedisKeyConstants.RATE_LIMIT_PREFIX + path + ":" + ip;
     }
 
     private void writeRateLimited(HttpServletResponse response) throws IOException {

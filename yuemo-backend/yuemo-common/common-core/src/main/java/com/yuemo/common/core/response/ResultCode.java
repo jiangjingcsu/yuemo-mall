@@ -20,8 +20,8 @@ public enum ResultCode {
     INTERNAL_ERROR(500, "服务器内部错误"),
 
     // 业务错误码 1xxx
-    USER_NOT_FOUND(1001, "用户不存在"),
-    USER_PASSWORD_ERROR(1002, "密码错误"),
+    USER_LOGIN_FAILED(1001, "用户名或密码错误"),
+    USER_NOT_FOUND(1002, "用户不存在"),
     USER_ALREADY_EXISTS(1003, "用户已存在"),
     USER_TOKEN_EXPIRED(1004, "Token 已过期"),
 
@@ -38,7 +38,8 @@ public enum ResultCode {
     // 业务错误码 4xxx
     PAYMENT_FAILED(4001, "支付失败"),
     PAYMENT_CALLBACK_ERROR(4002, "支付回调处理异常"),
-    REFUND_FAILED(4003, "退款失败"),
+    PAYMENT_NOT_FOUND(4003, "支付记录不存在"),
+    REFUND_FAILED(4004, "退款失败"),
 
     // 业务错误码 5xxx
     CART_ITEM_NOT_FOUND(5001, "购物车商品不存在"),

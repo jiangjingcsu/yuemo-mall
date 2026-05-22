@@ -1,6 +1,7 @@
 package com.yuemo.user.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.yuemo.common.core.base.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -13,6 +14,7 @@ import java.math.BigDecimal;
 public class User extends BaseEntity {
 
     private String username;
+    @JsonIgnore
     private String password;
     private String nickname;
     private String phone;

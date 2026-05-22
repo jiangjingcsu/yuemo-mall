@@ -17,9 +17,11 @@ public interface UserService {
 
     User getUserById(Long id);
 
-    void updateUser(Long id, User user);
+    void updateUser(Long id, Long currentUserId, User user);
 
     BigDecimal getBalance(Long userId);
 
     void deductBalance(Long userId, BigDecimal amount);
+
+    void addBalance(Long userId, BigDecimal amount);
 }

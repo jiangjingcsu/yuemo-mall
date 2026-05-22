@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, Radio, Button, Descriptions, Divider, Spin, message, Input, Empty, Tag, Image, Space } from 'antd';
-import { orderApi } from '../../api/order';
-import { cartApi, CartItem as CartItemType } from '../../api/cart';
-import request from '../../utils/request';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Card, Radio, Button, Descriptions, Divider, Spin, message, Input, Empty, Tag, Image, Space, theme } from 'antd';
+import type { RadioChangeEvent } from 'antd';
+import { orderApi } from '@/api/order';
+import { type CartItem } from '@/api/cart';
+import request from '@/utils/request';
 
 interface Address {
-  id: number;
+  id: string;
   receiverName: string;
   receiverPhone: string;
   province: string;
@@ -18,49 +19,50 @@ interface Address {
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<CartItemType[]>([]);
+  const location = useLocation();
+  const { token } = theme.useToken();
+  const stateItems = (location.state as { selectedItems?: CartItem[] } | null)?.selectedItems;
+  const [items, setItems] = useState<CartItem[]>(stateItems ?? []);
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [remark, setRemark] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      cartApi.getList(),
-      request.get<Address[]>('/user/address/list'),
-    ])
-      .then(([cartData, addressData]) => {
-        const selected = (cartData || []).filter((i: CartItemType) => i.selected);
-        if (selected.length === 0) {
-          message.warning('请先选择要结算的商品');
-          navigate('/cart');
-          return;
-        }
-        setItems(selected);
-        setAddresses(addressData || []);
-        const defaultAddr = (addressData || []).find((a: Address) => a.isDefault);
-        if (defaultAddr) {
-          setSelectedAddressId(defaultAddr.id);
-        } else if ((addressData || []).length > 0) {
-          setSelectedAddressId(addressData[0].id);
-        }
-      })
-      .catch(() => message.error('加载结算信息失败'))
-      .finally(() => setLoading(false));
-  }, [navigate]);
+    if (stateItems && stateItems.length > 0) {
+      request.get<Address[]>('/user/address/list')
+        .then((addressData) => {
+          setAddresses(addressData || []);
+          const defaultAddr = (addressData || []).find((a) => a.isDefault);
+          if (defaultAddr) {
+            setSelectedAddressId(defaultAddr.id);
+          } else if ((addressData || []).length > 0) {
+            setSelectedAddressId(addressData[0].id);
+          }
+        })
+        .catch(() => message.error('加载地址失败'))
+        .finally(() => setIsLoading(false));
+      return;
+    }
 
-  const totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    navigate('/cart');
+  }, [stateItems, navigate]);
 
-  const handleSubmit = async () => {
+  const totalAmount = useMemo(
+    () => items.reduce((sum, i) => sum + (i.subtotal || i.price * i.quantity), 0),
+    [items]
+  );
+
+  const handleSubmit = useCallback(async () => {
     if (!selectedAddressId) {
       message.warning('请选择收货地址');
       return;
     }
-    setSubmitting(true);
+    setIsSubmitting(true);
     try {
       const order = await orderApi.create({
-        addressId: selectedAddressId,
+        addressId: Number(selectedAddressId),
         items: items.map((i) => ({
           productId: i.productId,
           skuId: i.skuId,
@@ -69,22 +71,36 @@ export default function CheckoutPage() {
         remark: remark || undefined,
       });
       message.success('订单创建成功');
-      navigate(`/payment/${order.id}`);
+      if (order?.id) {
+        navigate(`/payment/${order.id}`);
+      } else {
+        navigate('/orders');
+      }
     } catch {
       message.error('创建订单失败');
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
-  };
+  }, [selectedAddressId, items, remark, navigate]);
 
-  if (loading) return <Spin style={{ display: 'block', margin: '100px auto' }} />;
+  const handleAddressChange = useCallback((e: RadioChangeEvent) => {
+    setSelectedAddressId(e.target.value);
+  }, []);
+
+  const handleGoToAddress = useCallback(() => navigate('/address'), [navigate]);
+  const handleGoBack = useCallback(() => navigate('/cart'), [navigate]);
+  const handleRemarkChange = useCallback((e: { target: { value: string } }) => {
+    setRemark(e.target.value);
+  }, []);
+
+  if (isLoading) return <Spin style={{ display: 'block', margin: '100px auto' }} />;
 
   if (addresses.length === 0) {
     return (
       <div style={{ maxWidth: 800, margin: '40px auto' }}>
         <Card>
           <Empty description="请先添加收货地址">
-            <Button type="primary" onClick={() => navigate('/address')}>去添加地址</Button>
+            <Button type="primary" onClick={handleGoToAddress}>去添加地址</Button>
           </Empty>
         </Card>
       </div>
@@ -97,7 +113,7 @@ export default function CheckoutPage() {
         <h3 style={{ marginBottom: 16 }}>收货地址</h3>
         <Radio.Group
           value={selectedAddressId}
-          onChange={(e) => setSelectedAddressId(e.target.value)}
+          onChange={handleAddressChange}
           style={{ width: '100%' }}
         >
           <Space direction="vertical" style={{ width: '100%' }}>
@@ -115,7 +131,7 @@ export default function CheckoutPage() {
                 }}
               >
                 <span style={{ fontWeight: 500 }}>{addr.receiverName}</span>
-                <span style={{ marginLeft: 12, color: '#666' }}>{addr.receiverPhone}</span>
+                <span style={{ marginLeft: 12, color: token.colorTextSecondary }}>{addr.receiverPhone}</span>
                 <span style={{ marginLeft: 12 }}>
                   {addr.province}{addr.city}{addr.district} {addr.detail}
                 </span>
@@ -128,7 +144,7 @@ export default function CheckoutPage() {
         <Divider>商品清单</Divider>
 
         {items.map((item) => (
-          <div key={item.id} style={{ display: 'flex', alignItems: 'center', marginBottom: 16, padding: '8px 0' }}>
+          <div key={item.skuId} style={{ display: 'flex', alignItems: 'center', marginBottom: 16, padding: '8px 0' }}>
             <Image
               src={item.productImage || '/placeholder.png'}
               width={64}
@@ -141,8 +157,8 @@ export default function CheckoutPage() {
               {item.specText && <Tag style={{ marginTop: 4 }}>{item.specText}</Tag>}
             </div>
             <div style={{ textAlign: 'right', minWidth: 120 }}>
-              <div style={{ color: '#f5222d' }}>¥{item.price?.toFixed(2)}</div>
-              <div style={{ color: '#999' }}>x{item.quantity}</div>
+              <div style={{ color: token.colorError }}>¥{item.price?.toFixed(2)}</div>
+              <div style={{ color: token.colorTextTertiary }}>x{item.quantity}</div>
             </div>
           </div>
         ))}
@@ -153,7 +169,7 @@ export default function CheckoutPage() {
           <span style={{ marginRight: 8 }}>订单备注：</span>
           <Input
             value={remark}
-            onChange={(e) => setRemark(e.target.value)}
+            onChange={handleRemarkChange}
             placeholder="选填，可以告诉卖家您的特殊需求"
             style={{ width: 400 }}
             maxLength={200}
@@ -163,7 +179,7 @@ export default function CheckoutPage() {
         <Descriptions column={1} bordered size="small">
           <Descriptions.Item label="商品数量">{items.length} 件</Descriptions.Item>
           <Descriptions.Item label="商品总额">
-            <span style={{ color: '#f5222d', fontSize: 20, fontWeight: 'bold' }}>
+            <span style={{ color: token.colorError, fontSize: 20, fontWeight: 'bold' }}>
               ¥{totalAmount.toFixed(2)}
             </span>
           </Descriptions.Item>
@@ -172,10 +188,10 @@ export default function CheckoutPage() {
         <Divider />
 
         <div style={{ textAlign: 'right' }}>
-          <Button style={{ marginRight: 16 }} onClick={() => navigate('/cart')}>
+          <Button style={{ marginRight: 16 }} onClick={handleGoBack}>
             返回购物车
           </Button>
-          <Button type="primary" size="large" loading={submitting} onClick={handleSubmit}>
+          <Button type="primary" size="large" loading={isSubmitting} onClick={handleSubmit}>
             提交订单
           </Button>
         </div>

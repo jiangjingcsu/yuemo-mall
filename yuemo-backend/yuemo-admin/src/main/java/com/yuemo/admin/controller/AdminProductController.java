@@ -3,11 +3,10 @@ package com.yuemo.admin.controller;
 import com.yuemo.common.core.response.Result;
 import com.yuemo.product.dto.CreateProductRequest;
 import com.yuemo.product.dto.UpdateProductRequest;
-import com.yuemo.product.entity.Brand;
-import com.yuemo.product.entity.ProductSku;
 import com.yuemo.product.service.BrandService;
 import com.yuemo.product.service.ProductService;
 import com.yuemo.product.service.SkuService;
+import com.yuemo.product.vo.BrandVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -46,14 +45,14 @@ public class AdminProductController {
     }
 
     @PostMapping("/{id}/sku")
-    public Result<Void> createSku(@PathVariable Long id, @RequestBody ProductSku sku) {
+    public Result<Void> createSku(@PathVariable Long id, @RequestBody com.yuemo.product.entity.ProductSku sku) {
         sku.setProductId(id);
-        skuMapper.insert(sku);
+        skuService.updateSku(id, sku);
         return Result.success();
     }
 
     @PutMapping("/sku/{skuId}")
-    public Result<Void> updateSku(@PathVariable Long skuId, @RequestBody ProductSku sku) {
+    public Result<Void> updateSku(@PathVariable Long skuId, @RequestBody com.yuemo.product.entity.ProductSku sku) {
         skuService.updateSku(skuId, sku);
         return Result.success();
     }
@@ -65,16 +64,14 @@ public class AdminProductController {
     }
 
     @PostMapping("/brand")
-    public Result<Void> createBrand(@RequestBody Brand brand) {
+    public Result<Void> createBrand(@RequestBody com.yuemo.product.entity.Brand brand) {
         brandService.create(brand);
         return Result.success();
     }
 
     @PutMapping("/brand/{id}")
-    public Result<Void> updateBrand(@PathVariable Long id, @RequestBody Brand brand) {
+    public Result<Void> updateBrand(@PathVariable Long id, @RequestBody com.yuemo.product.entity.Brand brand) {
         brandService.update(id, brand);
         return Result.success();
     }
-
-    private final com.yuemo.product.mapper.ProductSkuMapper skuMapper;
 }

@@ -3,6 +3,7 @@ package com.yuemo.user.controller;
 import com.yuemo.common.core.response.Result;
 import com.yuemo.user.entity.Address;
 import com.yuemo.user.service.AddressService;
+import com.yuemo.user.vo.AddressVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,13 +17,13 @@ public class AddressController {
     private final AddressService addressService;
 
     @GetMapping("/list")
-    public Result<List<Address>> list(@RequestAttribute("userId") Long userId) {
-        return Result.success(addressService.listAddresses(userId));
+    public Result<List<AddressVO>> list(@RequestAttribute("userId") Long userId) {
+        return Result.success(addressService.listAddresses(userId).stream().map(AddressVO::from).toList());
     }
 
     @GetMapping("/{id}")
-    public Result<Address> detail(@PathVariable Long id) {
-        return Result.success(addressService.getAddressById(id));
+    public Result<AddressVO> detail(@PathVariable Long id) {
+        return Result.success(AddressVO.from(addressService.getAddressById(id)));
     }
 
     @PostMapping

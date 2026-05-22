@@ -47,6 +47,11 @@
         </encoder>
     </appender>
 
+    <!-- 兜底：Spring Profile 不可用时也能看到日志 -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
     <springProfile name="default">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
@@ -57,6 +62,7 @@
 
     <springProfile name="prod">
         <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
             <appender-ref ref="ERROR_FILE"/>
         </root>

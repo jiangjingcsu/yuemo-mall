@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Radio, Button, Space, message, Descriptions, Divider, Spin, Tag } from 'antd';
+import { Card, Radio, Button, Space, message, Descriptions, Divider, Spin, Tag, Result } from 'antd';
 import { WechatOutlined, AlipayCircleOutlined, WalletOutlined } from '@ant-design/icons';
-import { paymentApi, Payment } from '../../api/payment';
-import { orderApi, Order } from '../../api/order';
+import { paymentApi } from '../../api/payment';
+import { orderApi, type Order } from '../../api/order';
 import { userApi } from '../../api/user';
 
 export default function PaymentPage() {
@@ -13,20 +13,32 @@ export default function PaymentPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId) {
+      setError('缺少订单ID');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    Promise.all([
-      orderApi.getDetail(Number(orderId)),
-      userApi.getBalance(),
-    ])
-      .then(([orderData, balanceData]) => {
+    setError(null);
+
+    orderApi.getDetail(orderId)
+      .then((orderData) => {
         setOrder(orderData);
+        return userApi.getBalance();
+      })
+      .then((balanceData) => {
         setBalance(balanceData ?? 0);
       })
-      .catch(() => message.error('加载订单信息失败'))
+      .catch((err) => {
+        if (!order) {
+          setError('加载订单信息失败，请返回重试');
+        }
+      })
       .finally(() => setLoading(false));
   }, [orderId]);
 
@@ -36,14 +48,13 @@ export default function PaymentPage() {
     if (!orderId || !order) return;
     setPaying(true);
     try {
-      const result = await paymentApi.pay(Number(orderId), payType);
+      await paymentApi.pay(orderId!, payType);
       if (payType === 3) {
         message.success('余额支付成功');
-        navigate('/orders');
       } else {
         message.success('支付请求已提交，请完成支付');
-        navigate('/orders');
       }
+      navigate('/orders');
     } catch {
       message.error('支付失败，请重试');
     } finally {
@@ -52,7 +63,38 @@ export default function PaymentPage() {
   };
 
   if (loading) return <Spin style={{ display: 'block', margin: '100px auto' }} />;
-  if (!order) return <Card>订单信息获取失败</Card>;
+
+  if (error) {
+    return (
+      <Result
+        status="error"
+        title={error}
+        extra={<Button type="primary" onClick={() => navigate('/orders')}>返回订单列表</Button>}
+      />
+    );
+  }
+
+  if (!order) {
+    return (
+      <Result
+        status="warning"
+        title="订单信息获取失败"
+        extra={<Button type="primary" onClick={() => navigate('/orders')}>返回订单列表</Button>}
+      />
+    );
+  }
+
+  if (order.status !== 0) {
+    const statusText: Record<number, string> = { 1: '已支付', 2: '已发货', 3: '已完成', 4: '已取消' };
+    return (
+      <Result
+        status="warning"
+        title={`订单${statusText[order.status] ?? '状态异常'}`}
+        subTitle="该订单无法进行支付"
+        extra={<Button type="primary" onClick={() => navigate('/orders')}>返回订单列表</Button>}
+      />
+    );
+  }
 
   return (
     <div style={{ maxWidth: 600, margin: '40px auto' }}>
@@ -61,7 +103,7 @@ export default function PaymentPage() {
           <Descriptions.Item label="订单编号">{order.orderNo || orderId}</Descriptions.Item>
           <Descriptions.Item label="支付金额">
             <span style={{ color: '#f5222d', fontSize: 20, fontWeight: 'bold' }}>
-              ¥{order.payAmount?.toFixed(2)}
+              ¥{(order.payAmount ?? 0).toFixed(2)}
             </span>
           </Descriptions.Item>
         </Descriptions>
